@@ -1,0 +1,12 @@
+node_modules
+
+
+# rust artifacts
+src-wasm/pkg
+src-wasm/target
+
+# Compiled/transpiled outputs
+dist
+
+# macOS
+.DS_Store
