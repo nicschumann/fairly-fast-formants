@@ -12,6 +12,7 @@ use cfg_if::cfg_if;
 use wasm_bindgen::prelude::*;
 use na::{DMatrix, Complex};
 use std::f32::consts::{ PI };
+use std::convert::TryInto;
 
 cfg_if! {
     if #[cfg(feature = "wee_alloc")] {
@@ -49,6 +50,9 @@ pub struct BlockData {
     filter_frequencies : Vec<f32>,
     filter_outputs : Vec<Complex<f32>>,
     filter_magnitude : Vec<f32>,
+
+    formant_indices : Vec<u32>,
+    formant_count : u32,
 }
 
 pub struct FormantData {
@@ -57,12 +61,11 @@ pub struct FormantData {
 
 #[wasm_bindgen]
 impl BlockData {
-    pub fn new(block_size : usize, model_order: usize, sample_rate : u32) -> BlockData {
+    pub fn new(block_size : usize, model_order: usize, frequency_bins: usize, sample_rate : u32) -> BlockData {
         utils::set_panic_hook();
 
         let p = model_order + 1;
         let signal : Vec<f32> = vec![0.0; block_size];
-        let frequency_bins = 512;
         
         let correlation : Vec<f32> = vec![0.0; p];
         let input : Vec<f32> = vec![0.0; model_order];
@@ -77,6 +80,8 @@ impl BlockData {
         let filter_outputs : Vec<Complex<f32>> = vec![Complex::new(0.0, 0.0); frequency_bins];
         let filter_magnitude : Vec<f32> = vec![0.0; frequency_bins];
 
+        let expected_num_formants = model_order as usize;
+        let formant_indices : Vec<u32> = Vec::with_capacity(expected_num_formants);
         
         // prepare toeplitz indices; we'll use these 
         // to make the toeplitz matrix later.
@@ -92,7 +97,7 @@ impl BlockData {
                 }
         }
 
-        // Make the unit frequencies; we'll use these
+        // Make the #{frequency_bins} complex roots of unity; we'll use these
         // to evaluate the filter polynomial later.
         let fs = sample_rate as f32;
         for i in 0..frequency_bins {
@@ -125,6 +130,9 @@ impl BlockData {
             filter_frequencies: filter_frequencies,
             filter_outputs: filter_outputs,
             filter_magnitude: filter_magnitude,
+
+            formant_indices: formant_indices,
+            formant_count: 0,
         }
     }
 
@@ -143,23 +151,16 @@ impl BlockData {
     pub fn filter_frequencies_pointer(&self) -> *const f32 {
         self.filter_frequencies.as_ptr()
     }
-}
 
-#[wasm_bindgen]
-pub fn block_sum(block : &BlockData) -> f32 {
-    let mut total = 0.0;
-
-    for i in 0..block.block_size {
-        total += block.signal[i]
+    pub fn formants_pointer(&self) -> *const u32 {
+        self.formant_indices.as_ptr()
     }
 
-    total
+    pub fn formants_count(&self) -> u32 {
+        self.formant_count
+    }
 }
 
-#[wasm_bindgen]
-pub fn apply_weights(block : &mut BlockData) {
-    weights::apply_hann_weights(block);
-}
 
 #[wasm_bindgen]
 pub fn run_lpc(block : &mut BlockData) {
@@ -171,6 +172,7 @@ pub fn run_lpc(block : &mut BlockData) {
     build_toeplitz_matrix(block);
     solve_coefficients(block);
     evaluate_envelope(block);
+    extract_maxima(block);
 }
 
 
@@ -215,5 +217,27 @@ pub fn evaluate_envelope(block: &mut BlockData) {
         let y = sum.inv();
         block.filter_outputs[i] = y;
         block.filter_magnitude[i] = y.norm_sqr().sqrt()
+    }
+}
+
+pub fn extract_maxima(block: &mut BlockData) {
+    const WINDOW_WIDTH : usize = 1;
+
+    block.formant_count = 0;
+    block.formant_indices.clear();
+
+    for i in WINDOW_WIDTH..(block.frequency_bins - WINDOW_WIDTH) {
+        let mut is_maximum = true;
+        let candidate_point = block.filter_magnitude[i];
+
+        for di in (i - WINDOW_WIDTH)..(i + WINDOW_WIDTH + 1) {
+            let j : usize = di.try_into().unwrap();
+            is_maximum &= block.filter_magnitude[j] <= candidate_point;
+        }
+
+        if is_maximum { 
+            block.formant_indices.push(i as u32);
+            block.formant_count += 1;
+        }
     }
 }
