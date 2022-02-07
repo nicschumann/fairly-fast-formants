@@ -165,14 +165,12 @@ impl BlockData {
 #[wasm_bindgen]
 pub fn run_lpc(block : &mut BlockData) {
     autocorrelate::autocorrelate(block);
-
-    // set input and output data as 
-    // to appropriate subsets of the correlation.
     build_vector_pair(block);
     build_toeplitz_matrix(block);
     solve_coefficients(block);
     evaluate_envelope(block);
     extract_maxima(block);
+    // normalize_formants(block);
 }
 
 
@@ -236,6 +234,7 @@ pub fn extract_maxima(block: &mut BlockData) {
         }
 
         if is_maximum { 
+            // log!("{}", i as u32);
             block.formant_indices.push(i as u32);
             block.formant_count += 1;
         }

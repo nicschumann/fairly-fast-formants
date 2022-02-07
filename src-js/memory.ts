@@ -36,9 +36,3 @@ export const get_block_memory = (block_data : BlockData, block_length : number, 
         formants: formants
 	};
 };
-
-
-export const get_formants_from_memory = (block_data: BlockData, block_memory: BlockMemory) : Uint32Array => {
-    let formant_count = block_data.formants_count();
-    return block_memory.formants.slice(0, formant_count);
-}
