@@ -36,3 +36,11 @@ export const get_block_memory = (block_data : BlockData, block_length : number, 
         formants: formants
 	};
 };
+
+
+export const memcpy_from_to = (source : Float32Array, dest : Float32Array) => {
+	for (let i = 0; i < dest.length && i < source.length; i++)
+	{
+		dest[i] = source[i];
+	}
+}

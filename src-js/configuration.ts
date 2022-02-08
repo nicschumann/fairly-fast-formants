@@ -7,7 +7,7 @@ export interface GlobalConfiguration {
 
 export const settings : GlobalConfiguration = {
 	sample_window_length_ms: 0.03,
-	sample_rate_hz: 8000, 
+	sample_rate_hz: 8192, 
 	lpc_model_order: 10,
 	frequency_bins: 512,
 };

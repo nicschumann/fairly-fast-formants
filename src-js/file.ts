@@ -36,11 +36,11 @@ export async function get_signal(audio_file_path : string, audio_context : Audio
 
 export function get_blocks_from_signal(signal : math.Matrix, settings: GlobalConfiguration) {
     let t_start = performance.now();
-	const weights = get_hann_weights(settings)
+	// const weights = get_hann_weights(settings)
 	const overlap = 0.5;
 
 	let N = signal.size()[0];
-	let N_w = weights.size()[0];
+	let N_w = math.floor(settings.sample_rate_hz * settings.sample_window_length_ms);
 	let step_size = math.floor(N_w * (1.0 - overlap));
 	let N_b = math.floor((N - N_w) / step_size) + 1
 
@@ -49,12 +49,20 @@ export function get_blocks_from_signal(signal : math.Matrix, settings: GlobalCon
 	for (let i = 0; i < N_b; i++){
 		let offset = i * step_size;
 		let row = math.subset(signal, math.index(math.range(offset, offset+N_w)))
-		let res = math.dotMultiply(row, weights)
-		blocks.push(res)
+		blocks.push(row)
 	}
 
 	let t_end = performance.now();
 	console.log(`get blocks from signal: ${t_end - t_start}ms`);
 
 	return blocks
+}
+
+
+export const get_file_blocks = async (filepath : string, audio_context: AudioContext, settings : GlobalConfiguration) : Promise<math.Matrix[]> => {
+	let data = await get_signal(filepath, audio_context);
+	let file_signal = math.matrix(Array.from(data))
+	let blocks = get_blocks_from_signal(file_signal, settings);
+
+	return blocks;
 }

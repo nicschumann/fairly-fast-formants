@@ -7,11 +7,100 @@ export interface Formant {
     amplitude : number,
 };
 
+export interface FormantHistory {
+    alpha : number,
+    formant_count: number,
+    max_length : number,
+    raw_formants: Formant[][],
+    smooth_formants: Formant[][],
+    current_average: Formant[],
+};
+
+
+export const initialize_history = (formants_to_track: number, max_length: number, alpha : number = 0.01) : FormantHistory => {
+    return {
+        alpha: alpha,
+        formant_count : formants_to_track,
+        max_length: max_length,
+        raw_formants: [],
+        smooth_formants: [],
+        current_average: [],
+    }
+};
+
+const cma = (prev: Formant, curr: Formant, n : number = 5) : Formant => {
+    return {
+        bin_index: (prev.bin_index * n + curr.bin_index) / (n + 1),
+        frequency: (prev.frequency * n + curr.frequency) / (n + 1),
+        amplitude: (prev.amplitude * n + curr.amplitude) / (n + 1),
+    }
+}
+
+const ewma = (prev: Formant, curr: Formant, alpha : number = 0.5) : Formant => {
+    let one_minus_alpha = 1.0 - alpha;
+    return {
+        bin_index: alpha * curr.bin_index + one_minus_alpha * prev.bin_index,
+        frequency: alpha * curr.frequency + one_minus_alpha * prev.frequency,
+        amplitude: alpha * curr.amplitude + one_minus_alpha * prev.amplitude,
+    }
+}
+
+
+export const add_formants_to_history = (formants : Formant[], history: FormantHistory) : FormantHistory => {
+    let local_formants = [...formants];
+    if (history.raw_formants.length >= history.max_length) { history.raw_formants.shift(); }
+    if (history.current_average.length == 0) { history.current_average = local_formants.slice(0, history.formant_count); }
+    if (history.smooth_formants.length >= history.max_length) { history.smooth_formants.shift(); }
+
+    let a = history.alpha;
+    let one_minus_a = 1 - a;
+
+    // step 0: push the raw detections onto the raw formant history
+    history.raw_formants.push(formants);
+
+    let new_average : Formant[] = []
+
+    for (let fa_i = 0; fa_i < history.formant_count; fa_i++) {
+        let formant_average = history.current_average[fa_i];
+        let formant : Formant = null;
+        let min_error = Infinity;
+        let index = -1;
+
+        // scan formants for the closest matches with the current averages.
+        if (local_formants.length > 0) {
+            for (let i = 0; i < local_formants.length; i++) {
+                let current_formant = local_formants[i];
+    
+                let current_error = Math.pow(formant_average.frequency - current_formant.frequency, 2);
+    
+                if (current_error < min_error) {
+                    formant = current_formant;
+                    min_error = current_error;
+                    index = i;
+                }
+            }
+    
+            local_formants.splice(index, 1);
+            new_average.push(cma(formant_average, formant, 5));
+
+        } else {
+
+            // no new detections, just push the old average in...
+            new_average.push(formant_average);
+        }
+    }
+    
+    history.current_average = new_average;
+    history.smooth_formants.push(new_average);
+    
+    return history;
+};
+
 export const get_formants_from_memory = (block_data: BlockData, block_memory: BlockMemory) : Formant[] => {
     let formant_count = block_data.formants_count();
 
     let formant_data = block_memory.formants.slice(0, formant_count);
-    let formants = <Formant[]> [];
+    let formants : Formant[] =  [];
 
     formant_data.forEach((index, i) => {
         formants.push({
@@ -21,15 +110,25 @@ export const get_formants_from_memory = (block_data: BlockData, block_memory: Bl
         });
     });
 
+    console.log(formants);
+
     // console.log(formants);
-    // return formants;
-    return normalize_formants(formants);
+    return formants;
+    // return normalize_formants(formants);
 };
 
-// My least favorite transform:
-// PS. it takes more time to do this entire normalization
-// in javascript than it does to run the entire LPC analysis in wasm.
-// :c
+
+
+
+/**
+ * This is my least favorite transform in this entire project. It's job
+ * Is to go through the raw formants from wasm and remove spurious low 
+ * frequency spikes, and merge formant detections that are "too close together"
+ * by some arbitrary metric. It takes a long time to do, and is annoying.
+ * 
+ * @param candidates 
+ * @returns Formant[] array of formants with spurious candidates removed.
+ */
 const normalize_formants = (candidates : Formant[]) : Formant[] => {
 	// candidates.length <= 5
 	// candidats is in order of frequency.
