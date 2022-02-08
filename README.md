@@ -52,3 +52,5 @@ You should now have a dev server running the application at `localhost:3000`.
 - https://www.titanwolf.org/Network/q/897cc8a1-83eb-44c1-810f-75e485f5c28d/y
 
 - https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.4905&rep=rep1&type=pdf
+
+- https://wiki.aalto.fi/display/ITSP/Pre-emphasis (pre-emphasis filtering...)
