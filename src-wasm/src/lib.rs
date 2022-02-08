@@ -37,9 +37,9 @@ pub struct BlockData {
     sample_rate: u32,
     solved: bool,
   
-    signal : Vec<f32>, // the memory
+    signal : Vec<f32>,
    
-    correlation : Vec<f32>, // the autocorrelation of the memory
+    correlation : Vec<f32>,
     input : Vec<f32>,
     target : Vec<f32>,
 
@@ -54,10 +54,6 @@ pub struct BlockData {
 
     formant_indices : Vec<u32>,
     formant_count : u32,
-}
-
-pub struct FormantData {
-
 }
 
 #[wasm_bindgen]
@@ -170,6 +166,13 @@ impl BlockData {
 
 #[wasm_bindgen]
 pub fn run_lpc(block : &mut BlockData) -> bool {
+    // apply hann weights???
+    weights::apply_hann_weights(block);
+    
+    // pre-emphasis
+    preemphasis_filter(block);
+
+    // run main
     autocorrelate::autocorrelate(block);
     build_vector_pair(block);
     build_toeplitz_matrix(block);
@@ -186,6 +189,18 @@ pub fn run_lpc(block : &mut BlockData) -> bool {
     succeeded
 }
 
+pub fn preemphasis_filter(block: &mut BlockData) {
+    let mut prev_signal_step = block.signal[0];
+
+    const A : f32  = 1.0;
+    const B : f32 = -0.68;
+    
+    for i in 1..block.block_size {
+        let updated_signal_step = A * block.signal[i] + B * prev_signal_step;
+        prev_signal_step = block.signal[i];
+        block.signal[i] = updated_signal_step;
+    }
+}
 
 pub fn build_vector_pair(block: &mut BlockData) {
     for i in 0..block.model_order {
