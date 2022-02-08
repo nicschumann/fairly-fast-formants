@@ -35,6 +35,7 @@ pub struct BlockData {
     model_order : usize,
     frequency_bins: usize,
     sample_rate: u32,
+    solved: bool,
   
     signal : Vec<f32>, // the memory
    
@@ -115,6 +116,7 @@ impl BlockData {
             model_order : model_order,
             frequency_bins : frequency_bins,
             sample_rate: sample_rate,
+            solved: false,
 
             signal: signal, 
 
@@ -159,18 +161,29 @@ impl BlockData {
     pub fn formants_count(&self) -> u32 {
         self.formant_count
     }
+
+    pub fn get_solved_state(&self) -> bool {
+        self.solved
+    }
 }
 
 
 #[wasm_bindgen]
-pub fn run_lpc(block : &mut BlockData) {
+pub fn run_lpc(block : &mut BlockData) -> bool {
     autocorrelate::autocorrelate(block);
     build_vector_pair(block);
     build_toeplitz_matrix(block);
-    solve_coefficients(block);
-    evaluate_envelope(block);
-    extract_maxima(block);
-    // normalize_formants(block);
+
+    let succeeded = solve_coefficients(block);
+
+    // only continue of the data is real.
+    if succeeded {
+        block.solved = succeeded;
+        evaluate_envelope(block);
+        extract_maxima(block);
+    }
+
+    succeeded
 }
 
 
@@ -188,10 +201,12 @@ pub fn build_toeplitz_matrix(block: &mut BlockData) {
     }
 }
 
-pub fn solve_coefficients(block: &mut BlockData) {
+pub fn solve_coefficients(block: &mut BlockData) -> bool {
     let forward = DMatrix::from_row_slice(block.model_order, block.model_order, &block.toeplitz);
     let mut inverse = DMatrix::identity(block.model_order, block.model_order);
-    let _result = na::linalg::try_invert_to(forward.transpose(), &mut inverse);
+    let result = na::linalg::try_invert_to(forward.transpose(), &mut inverse);
+    
+    if !result { return false }
 
 
     let target = DMatrix::from_vec(block.model_order, 1, block.target.clone());
@@ -200,6 +215,8 @@ pub fn solve_coefficients(block: &mut BlockData) {
     for i in 0..block.model_order {
         block.coefficients[i + 1] = coefficients[(i, 0)];
     }
+
+    return true;
 }
 
 pub fn evaluate_envelope(block: &mut BlockData) {
