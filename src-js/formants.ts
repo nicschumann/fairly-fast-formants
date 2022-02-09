@@ -2,101 +2,116 @@ import { BlockData } from 'src-wasm';
 import { BlockMemory } from './memory';
 
 export interface Formant {
+    time_step : number,
     bin_index : number,
     frequency : number,
     amplitude : number,
 };
 
-export interface FormantHistory {
-    alpha : number,
-    formant_count: number,
-    max_length : number,
-    raw_formants: Formant[][],
-    smooth_formants: Formant[][],
-    current_average: Formant[],
+
+export interface FormantAverage {
+    mean : number,
+    stdev : number,
+    formant_data : Formant[]
 };
 
+export interface FormantHistory {
+    max_length : number,
+    raw_formants: Formant[][],
+    averages : FormantAverage[]
+};
 
 export const initialize_history = (formants_to_track: number, max_length: number, alpha : number = 0.01) : FormantHistory => {
     return {
-        alpha: alpha,
-        formant_count : formants_to_track,
         max_length: max_length,
         raw_formants: [],
-        smooth_formants: [],
-        current_average: [],
+        averages: [],
+    };
+};
+
+const cma = (prev: number, curr: number, n : number = 5) : number => {
+    return (prev * n + curr) / (n + 1);
+}
+
+const ewma = (prev: number, curr: number, alpha : number = 0.5) : number => {
+    return alpha * curr + (1 - alpha) * prev;
+}
+
+
+const formant_to_average = (formant: Formant) : FormantAverage => {
+    return {
+        mean: formant.frequency,
+        stdev: 50, // update this with a principled base
+        formant_data: [formant]
     }
 };
 
-const cma = (prev: Formant, curr: Formant, n : number = 5) : Formant => {
-    return {
-        bin_index: (prev.bin_index * n + curr.bin_index) / (n + 1),
-        frequency: (prev.frequency * n + curr.frequency) / (n + 1),
-        amplitude: (prev.amplitude * n + curr.amplitude) / (n + 1),
-    }
-}
+const update_average_with_formant = (average : FormantAverage, formant: Formant, history: FormantHistory): FormantAverage => {
+    if (average.formant_data.length > history.max_length) { average.formant_data.shift(); }
+    average.formant_data.push(formant);
 
-const ewma = (prev: Formant, curr: Formant, alpha : number = 0.5) : Formant => {
-    let one_minus_alpha = 1.0 - alpha;
-    return {
-        bin_index: alpha * curr.bin_index + one_minus_alpha * prev.bin_index,
-        frequency: alpha * curr.frequency + one_minus_alpha * prev.frequency,
-        amplitude: alpha * curr.amplitude + one_minus_alpha * prev.amplitude,
-    }
-}
+    let N = average.formant_data.length;
+    let alpha = 0.8;
+    let mean = average.formant_data.reduce((a,b) => a + b.frequency, 0) / N;
+    let stdev = Math.sqrt(average.formant_data.reduce((a,b) => a + Math.pow(average.mean - b.frequency, 2), 0) / N);
 
+    average.mean = mean
+    average.stdev = ewma(average.stdev, stdev, alpha);
+
+    return average;
+}
 
 export const add_formants_to_history = (formants : Formant[], history: FormantHistory) : FormantHistory => {
     let local_formants = [...formants];
+    let local_averages = [...history.averages];
     if (history.raw_formants.length >= history.max_length) { history.raw_formants.shift(); }
-    if (history.current_average.length == 0) { history.current_average = local_formants.slice(0, history.formant_count); }
-    if (history.smooth_formants.length >= history.max_length) { history.smooth_formants.shift(); }
 
-    let a = history.alpha;
-    let one_minus_a = 1 - a;
-
-    // step 0: push the raw detections onto the raw formant history
     history.raw_formants.push(formants);
+    let new_averages : FormantAverage[] = [];
 
-    let new_average : Formant[] = []
+    while (local_averages.length > 0) {
+        let average = local_averages.shift();
+        
+        let scores = local_formants.map((f, i) => {return { error: Math.abs(f.frequency - average.mean), index: i}});
+        scores.sort((a,b) => { return a.error - b.error});
 
-    for (let fa_i = 0; fa_i < history.formant_count; fa_i++) {
-        let formant_average = history.current_average[fa_i];
-        let formant : Formant = null;
-        let min_error = Infinity;
-        let index = -1;
+        let min_score = scores[0];
+        let best_candidate = local_formants[min_score.index];
 
-        // scan formants for the closest matches with the current averages.
-        if (local_formants.length > 0) {
-            for (let i = 0; i < local_formants.length; i++) {
-                let current_formant = local_formants[i];
-    
-                let current_error = Math.pow(formant_average.frequency - current_formant.frequency, 2);
-    
-                if (current_error < min_error) {
-                    formant = current_formant;
-                    min_error = current_error;
-                    index = i;
-                }
-            }
-    
-            local_formants.splice(index, 1);
-            new_average.push(cma(formant_average, formant, 5));
-
-        } else {
-
-            // no new detections, just push the old average in...
-            new_average.push(formant_average);
+        // maybe add some decaying weighting over time here?
+        // or do this as a function of the length?
+        if (min_score.error < 3.0 * average.stdev) {
+            average = update_average_with_formant(average, best_candidate, history);
+            new_averages.push(average);
+            local_formants.splice(min_score.index, 1);
         }
-    }
-    
-    history.current_average = new_average;
-    history.smooth_formants.push(new_average);
-    
-    return history;
-};
 
-export const get_formants_from_memory = (block_data: BlockData, block_memory: BlockMemory) : Formant[] => {
+        if (local_formants.length == 0) { break; }
+    }
+
+    while (local_formants.length > 0) {
+        let formant = local_formants.shift();
+        new_averages.push(formant_to_average(formant));
+    }
+
+    new_averages.sort((a,b) => { return a.mean - b.mean });
+
+    history.averages = new_averages
+    return history
+}
+
+export const add_formants_to_history_alt = (formants : Formant[], history: FormantHistory) : FormantHistory => {
+    let local_formants = [...formants];
+    if (history.raw_formants.length >= history.max_length) { history.raw_formants.shift(); }
+
+    history.raw_formants.push(local_formants);
+
+    return history
+}
+
+
+
+export const get_formants_from_memory = (block_data: BlockData, block_memory: BlockMemory, time_step: number) : Formant[] => {
     let formant_count = block_data.formants_count();
 
     let formant_data = block_memory.formants.slice(0, formant_count);
@@ -104,6 +119,7 @@ export const get_formants_from_memory = (block_data: BlockData, block_memory: Bl
 
     formant_data.forEach((index, i) => {
         formants.push({
+            time_step: time_step,
             bin_index: index,
             frequency: block_memory.envelope_frequencies[index],
             amplitude: block_memory.envelope_data[index]
@@ -118,6 +134,19 @@ export const get_formants_from_memory = (block_data: BlockData, block_memory: Bl
 };
 
 
+const normalize_formants_2 = (candidates : Formant[]) : Formant[] => {
+    // step 1: sort the formants by amplitude.
+    let result : Formant[] = [];
+    candidates.sort((a, b) => { return a.amplitude - b.amplitude});
+    let i = 0;
+
+    while (candidates.length > 0) {
+        let formant = candidates[i];
+        candidates = candidates.filter(f => { return f.frequency > formant.frequency })
+    }
+
+    return result;
+};
 
 
 /**

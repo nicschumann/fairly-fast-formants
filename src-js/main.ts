@@ -12,10 +12,14 @@ import { add_formants_to_history, get_formants_from_memory, initialize_history }
 // import {envelope} from './envelope';
 import { get_fullscreen_canvas_context, plot_formant, plot_formant_average, plot_samples_f32a, plot_formant_bars } from './visualizer';
 
+const good_tests = [
+	'test/um-fu.wav',
+	'test/lm-fu.wav',
+	'test/lm-fr.wav',
+	'test/Untitled.m4a'
+]
 
-
-// const sample_file_path : string = 'test/um-fu.wav'; // good example of an issue when the envelope doesn't work right at first.
-const sample_file_path : string = 'test/lm-fu.wav'; // good example of an issue when the envelope doesn't work right at first.
+const sample_file_path : string = good_tests[3]; // good example of an issue when the envelope doesn't work right at first.
 let running = false;
 
 console.log(`[config] lpc model order: ${settings.lpc_model_order}`);
@@ -52,6 +56,7 @@ console.log(`[config] lpc model order: ${settings.lpc_model_order}`);
 // 	};
 
 // 	timing.frame_start = performance.now();
+// 	let time_step = 0;
 
 // 	let intervalID = window.setInterval(() => {
 // 		timing.analysis_start = performance.now();
@@ -79,7 +84,7 @@ console.log(`[config] lpc model order: ${settings.lpc_model_order}`);
 
 // 		if (solved) {
 // 			s = performance.now()
-// 			let formants = get_formants_from_memory(block_data, block_memory);
+// 			let formants = get_formants_from_memory(block_data, block_memory, time_step);
 // 			formant_history = add_formants_to_history(formants, formant_history);
 // 			e = performance.now()
 // 			console.log(`[js] normalize: ${e - s}ms`);
@@ -89,26 +94,26 @@ console.log(`[config] lpc model order: ${settings.lpc_model_order}`);
 
 // 			ctx.strokeStyle = 'red';
 // 			plot_formant_bars(formant_history, settings, ctx);
-// 			ctx.strokeStyle = 'black';
-// 			ctx.fillStyle = 'black';
-// 			plot_samples_f32a(block_memory.signal_data, block_memory.signal_length, ctx);
+// 			// ctx.strokeStyle = 'black';
+// 			// ctx.fillStyle = 'black';
+// 			// plot_samples_f32a(block_memory.signal_data, block_memory.signal_length, ctx);
 
-// 			ctx.strokeStyle = 'red';
-// 			plot_samples_f32a(block_memory.envelope_data, block_memory.envelope_length, ctx, 100, -0.01);
+// 			// ctx.strokeStyle = 'red';
+// 			// plot_samples_f32a(block_memory.envelope_data, block_memory.envelope_length, ctx, 100, -0.01);
 
-// 			formants.forEach(formant => {
-// 				plot_formant(formant, settings, ctx, 100, -0.01);
-// 			});
+// 			// formants.forEach(formant => {
+// 			// 	plot_formant(formant, settings, ctx, 100, -0.01);
+// 			// });
 
-// 			ctx.fillStyle = 'red';
-// 			formant_history.current_average.forEach(formant => {
-// 				plot_formant_average(formant, settings, ctx, 100, -0.01);
-// 			});
+// 			// ctx.fillStyle = 'red';
+// 			// formant_history.current_average.forEach(formant => {
+// 			// 	plot_formant_average(formant, settings, ctx, 100, -0.01);
+// 			// });
 
 // 			e = performance.now()
 // 			console.log(`[js] paint: ${e - s}ms`)
 // 		}
-
+// 		time_step += 1;
 // 		timing.frame_end = performance.now();
 		
 // 		console.log(`[summary] work time: ${timing.frame_end - timing.analysis_start}`);
@@ -151,18 +156,18 @@ window.addEventListener('click', async () => {
 		console.log(`\n [wasm] run_lpc: ${e - s}ms`)
 
 		s = performance.now()
-		let formants = get_formants_from_memory(block_data, block_memory);
+		let formants = get_formants_from_memory(block_data, block_memory, block_index);
 		formant_history = add_formants_to_history(formants, formant_history);
 
 		console.log('formants')
-		formants.forEach(f => {
-			console.log(f);
-		})
+		// formants.forEach(f => {
+		// 	console.log(f);
+		// })
 		
-		console.log('average')
-		formant_history.current_average.forEach(f => {
-			console.log(f);
-		})
+		// console.log('average')
+		// formant_history.current_average.forEach(f => {
+		// 	console.log(f);
+		// })
 
 		e = performance.now()
 		console.log(`[js] normalize: ${e - s}ms`);
@@ -175,19 +180,25 @@ window.addEventListener('click', async () => {
 		plot_samples_f32a(block_memory.signal_data, block_memory.signal_length, ctx);
 
 		ctx.strokeStyle = 'red';
+		ctx.fillStyle = 'red';
 		plot_samples_f32a(block_memory.envelope_data, block_memory.envelope_length, ctx, 100, -0.01);
 
-		// plot_formant_bars(formant_history, settings, ctx);
+		formant_history.averages.forEach(avg => {
+			console.log(avg);
+		});
 
-		formants.forEach(formant => {
-			plot_formant(formant, settings, ctx, 100, -0.01);
+		
+		formants.forEach((formant, i) => {
+			plot_formant(formant, settings, ctx, 100, -0.01, i + 1);
 		});
 
 
 		ctx.fillStyle = 'red';
-		formant_history.current_average.forEach(formant => {
-			plot_formant_average(formant, settings, ctx, 0, -0.01);
+		formant_history.averages.forEach(average => {
+			plot_formant_average(average, settings, ctx, 0, -0.01);
 		});
+
+		// plot_formant_bars(formant_history, settings, ctx);
 
 
 
