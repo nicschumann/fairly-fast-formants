@@ -3,14 +3,14 @@ import { pi } from 'mathjs';
 import {GlobalConfiguration} from './configuration';
 
 // @ts-ignore
-const get_hann_weights = (settings : GlobalConfiguration) : Matrix => {
-    const twopi = 2.0 * math.pi;
-    let N = math.floor(settings.sample_rate_hz * settings.sample_window_length_ms);
-    let c = math.cos(math.multiply(twopi / N, math.range(0, N)));
-    let hann_weights = math.multiply(0.5, math.subtract(1.0, c));
+// const get_hann_weights = (settings : GlobalConfiguration) : math.Matrix => {
+//     const twopi = 2.0 * math.pi;
+//     let N = math.floor(settings.sample_rate_hz * settings.sample_window_length_ms);
+//     let c : math.Matrix = math.cos(math.multiply(twopi / N, math.range(0, N)));
+//     let hann_weights = math.multiply(0.5, math.subtract(1.0, c));
 
-    return hann_weights;
-}
+//     return hann_weights;
+// }
 
 
 /**

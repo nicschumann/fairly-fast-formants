@@ -143,12 +143,12 @@ export const plot_samples = (b, N, ctx, offset=0) => {
 	ctx.stroke();
 }
 
-export const plot_samples_f32a = (b : Float32Array, N:number, ctx, offset=0, scalefactor=1.0) => {
+export const plot_samples_f32a = (signal: Float32Array, N: number, ctx : CanvasRenderingContext2D, offset: number = 0, scalefactor: number = 1.0) => {
 	ctx.beginPath()
-	ctx.moveTo(ind2x(0, N, ctx.canvas.width), amp2y(b[0], ctx.canvas.height, offset))
+	ctx.moveTo(ind2x(0, N, ctx.canvas.width), amp2y(signal[0], ctx.canvas.height, offset))
 	
 	for (let i = 1; i < N; i++) {
-		let amplitude = scalefactor * b[i];
+		let amplitude = scalefactor * signal[i];
 		ctx.lineTo(ind2x(i, N, ctx.canvas.width), amp2y(amplitude, ctx.canvas.height, offset));
 	}
 
