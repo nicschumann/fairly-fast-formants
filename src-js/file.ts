@@ -1,16 +1,5 @@
 import * as math from 'mathjs';
-import { pi } from 'mathjs';
 import {GlobalConfiguration} from './configuration';
-
-// @ts-ignore
-// const get_hann_weights = (settings : GlobalConfiguration) : math.Matrix => {
-//     const twopi = 2.0 * math.pi;
-//     let N = math.floor(settings.sample_rate_hz * settings.sample_window_length_ms);
-//     let c : math.Matrix = math.cos(math.multiply(twopi / N, math.range(0, N)));
-//     let hann_weights = math.multiply(0.5, math.subtract(1.0, c));
-
-//     return hann_weights;
-// }
 
 
 /**
@@ -58,6 +47,30 @@ export function get_blocks_from_signal(signal : math.Matrix, settings: GlobalCon
 	return blocks
 }
 
+export function get_blocks_from_signal_f32a(signal : Float32Array, settings: GlobalConfiguration) : Float32Array[] {
+    let t_start = performance.now();
+	// const weights = get_hann_weights(settings)
+	const overlap = settings.window_overlap;
+
+	let N = signal.length;
+	let N_w = math.floor(settings.sample_rate_hz * settings.sample_window_length_ms);
+	let step_size = math.floor(N_w * (1.0 - overlap));
+	let N_b = math.floor((N - N_w) / step_size) + 1
+
+	let blocks = []
+
+	for (let i = 0; i < N_b; i++){
+		let offset = i * step_size;
+		let row = signal.slice(offset, offset+N_w)
+		blocks.push(row)
+	}
+
+	let t_end = performance.now();
+	console.log(`get blocks from signal: ${t_end - t_start}ms`);
+
+	return blocks
+}
+
 
 export const get_file_blocks = async (filepath : string, audio_context: AudioContext, settings : GlobalConfiguration) : Promise<{blocks: math.Matrix[], signal: math.Matrix}> => {
 	let data = await get_signal(filepath, audio_context);
@@ -65,4 +78,12 @@ export const get_file_blocks = async (filepath : string, audio_context: AudioCon
 	let blocks = get_blocks_from_signal(file_signal, settings);
 
 	return {blocks, signal: file_signal};
+}
+
+
+export const get_file_blocks_f32a = async (filepath : string, audio_context: AudioContext, settings : GlobalConfiguration) : Promise<{blocks: Float32Array[], signal: Float32Array}> => {
+	let data = await get_signal(filepath, audio_context);
+	let blocks = get_blocks_from_signal_f32a(data, settings);
+
+	return {blocks, signal: data};
 }

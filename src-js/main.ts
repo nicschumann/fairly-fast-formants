@@ -3,14 +3,14 @@ import * as math from 'mathjs';
 import './style/reset.css';
 import './style/main.css';
 
-import init, { BlockData, run_lpc } from 'src-wasm';
+// import init, { BlockData, run_lpc } from 'src-wasm';
 
 import {GlobalConfiguration, settings} from './configuration';
-import { get_file_blocks } from './file';
+import { get_file_blocks, get_file_blocks_f32a } from './file';
 import { get_microphone_node } from './microphone';
 
-import { BlockMemory, get_block_memory, memcpy_from_to } from './memory';
-import { add_formants_to_history, FormantHistory, get_formants_from_memory, initialize_history } from './formants';
+import { FormantAnalyzer, FormantHistory } from './formants';
+import { add_formants_to_history, initialize_history } from './formants/data';
 import { get_canvas_context, resize_canvas, plot_formant, plot_formant_average, plot_samples_f32a, plot_formant_bars, highlight_timeslice } from './visualizer';
 
 const good_tests = [
@@ -21,7 +21,7 @@ const good_tests = [
 	'test/nic-ah.m4a'
 ]
 
-const sample_file_path = good_tests[2];
+const sample_file_path = good_tests[3];
 console.log(`[config] lpc model order: ${settings.lpc_model_order}`);
 
 
@@ -44,7 +44,7 @@ const application_state : ApplicationState = {
 };
 
 
-const render_formant_bars = (block_memory : BlockMemory, formant_history : FormantHistory, ctx : CanvasRenderingContext2D, offset : number = 0) => {
+const render_formant_bars = (_ : FormantAnalyzer, formant_history : FormantHistory, ctx : CanvasRenderingContext2D, offset : number = 0) => {
 	let s = performance.now()
 
 	ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
@@ -55,24 +55,29 @@ const render_formant_bars = (block_memory : BlockMemory, formant_history : Forma
 	console.log(`[js] paint: ${e - s}ms`)
 }
 
-const render_filter_envelope = (block_memory : BlockMemory, formant_history : FormantHistory, ctx : CanvasRenderingContext2D, offset : number = 0) => {
+const render_filter_envelope = (formant_analyzer : FormantAnalyzer, formant_history : FormantHistory, ctx : CanvasRenderingContext2D, offset : number = 0) => {
 	ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+	let signal = formant_analyzer.get_signal();
+	let envelope = formant_analyzer.get_envelope();
+	let raw_formants = formant_history.get_raw_formants()
+	let averages = formant_history.get_averages();
 	
 	ctx.strokeStyle = 'black';
-	plot_samples_f32a(block_memory.signal_data, block_memory.signal_length, ctx);
+	plot_samples_f32a(signal, signal.length, ctx);
 
-	ctx.strokeStyle = 'red';
-	plot_samples_f32a(block_memory.envelope_data, block_memory.envelope_length, ctx, 100, -0.01);
+	ctx.strokeStyle = 'blue';
+	plot_samples_f32a(envelope, envelope.length, ctx, 100, -0.01);
 
-	if (formant_history.raw_formants.length > 0) {
-		let last_formant_set = formant_history.raw_formants[formant_history.raw_formants.length - 1];
+	if (raw_formants.length > 0) {
+		let last_formant_set = raw_formants[raw_formants.length - 1];
 
 		last_formant_set.forEach(formant => {
 			plot_formant(formant, settings, ctx, 100, -0.01);
 		});
 	}
 
-	formant_history.averages.forEach(avg => {
+	averages.forEach(avg => {
 		plot_formant_average(avg, settings, ctx, 100, -0.01);
 	});
 };
@@ -80,6 +85,7 @@ const render_filter_envelope = (block_memory : BlockMemory, formant_history : Fo
 const render_entire_waveform = (signal : Float32Array, ctx: CanvasRenderingContext2D, block_index : number, settings: GlobalConfiguration) => {
 	ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 	
+	ctx.strokeStyle = 'black';
 	plot_samples_f32a(signal, signal.length, ctx);
 	let window_length = math.floor(settings.sample_window_length_ms * settings.sample_rate_hz);
 	let sample_window_start = block_index * window_length * settings.window_overlap;
@@ -93,19 +99,26 @@ const setup_dynamic_mode = (application_state : ApplicationState) => {
 	return async () => {
 		if (application_state.initialized) return;
 
-		let {memory} = await init();
+		let formant_analyzer = new FormantAnalyzer({
+			model_order: settings.lpc_model_order,
+			window_length_ms: settings.sample_window_length_ms,
+			sample_rate_hz: settings.sample_rate_hz,
+			frequency_bins: settings.frequency_bins,
+		});
+
+		let formant_history = new FormantHistory({
+			history_max_length: settings.history_length
+		})
+
+		await formant_analyzer.init();
+		formant_history.init();
+
 		let timeseries_ctx = get_canvas_context('timeslice-canvas');
 		let formant_ctx = get_canvas_context('formant-canvas');
 		const audio_context = new AudioContext({sampleRate: settings.sample_rate_hz});
 		
-		const block_length = math.floor(settings.sample_window_length_ms * settings.sample_rate_hz);
-		const block_data = BlockData.new(block_length, settings.lpc_model_order, settings.frequency_bins, settings.sample_rate_hz);
-		const block_memory = get_block_memory(block_data, block_length, memory, settings);
-		
-		let formant_history = initialize_history(settings.history_length); 
-
 		const analyzer_node = await get_microphone_node(audio_context, settings);
-		const time_domain_data = new Float32Array(block_length);
+		const time_domain_data = new Float32Array(formant_analyzer.get_block_length());
 
 		application_state.initialized = true;
 
@@ -121,7 +134,6 @@ const setup_dynamic_mode = (application_state : ApplicationState) => {
 		const run = () => {
 			timing.analysis_start = performance.now();
 			analyzer_node.getFloatTimeDomainData(time_domain_data);
-			memcpy_from_to(time_domain_data, block_memory.signal_data);
 
 			let s = performance.now();
 			
@@ -136,21 +148,21 @@ const setup_dynamic_mode = (application_state : ApplicationState) => {
 			 * 
 			 * Always check to see if the solve was successful before continuing.
 			 */
-			let solved = run_lpc(block_data);
+			let result = formant_analyzer.analyze(time_domain_data, application_state.timestep);
 			let e = performance.now();
-			console.log(`[wasm] solved: ${solved}`)
+			console.log(`[wasm] solved: ${result.success}`)
 			console.log(`[wasm] run_lpc: ${e - s}ms`);
 
-			if (solved) {
+			if (result.success) {
 				s = performance.now()
-				let formants = get_formants_from_memory(block_data, block_memory, application_state.timestep);
-				formant_history = add_formants_to_history(formants, formant_history);
+				let formants = result.formants;
+				formant_history.add_formants_for_timestep(formants, application_state.timestep);
 				e = performance.now()
 				console.log(`[js] normalize: ${e - s}ms`);
 
 				let offset = Math.max(0, application_state.timestep + 1 - settings.history_length);
-				render_formant_bars(block_memory, formant_history, formant_ctx, offset);
-				render_filter_envelope(block_memory, formant_history, timeseries_ctx);
+				render_formant_bars(formant_analyzer, formant_history, formant_ctx, offset);
+				render_filter_envelope(formant_analyzer, formant_history, timeseries_ctx);
 			}
 
 			application_state.timestep += 1;
@@ -172,46 +184,57 @@ const setup_static_mode = (state : ApplicationState) => {
 	return async () => {
 		if (application_state.initialized) return;
 
-		let {memory} = await init();
-
 		let timeseries_ctx = get_canvas_context('timeslice-canvas');
 		let formant_ctx = get_canvas_context('formant-canvas');
 		let clip_ctx = get_canvas_context('clip-canvas');
 
 		let audio_context = new AudioContext({sampleRate: settings.sample_rate_hz});
-		let {blocks, signal} = await get_file_blocks(sample_file_path, audio_context, settings);
+		let {blocks, signal} = await get_file_blocks_f32a(sample_file_path, audio_context, settings);
 		let block_index = 0;
-		
-		const block_length = math.floor(settings.sample_window_length_ms * settings.sample_rate_hz);
-		const block_data = BlockData.new(block_length, settings.lpc_model_order, settings.frequency_bins, settings.sample_rate_hz);
-		const block_memory = get_block_memory(block_data, block_length, memory, settings);
-		let formant_history = initialize_history(blocks.length);
+
+		let formant_analyzer = new FormantAnalyzer({
+			model_order: settings.lpc_model_order,
+			window_length_ms: settings.sample_window_length_ms,
+			sample_rate_hz: settings.sample_rate_hz,
+			frequency_bins: settings.frequency_bins,
+		});
+
+		await formant_analyzer.init();
+
+		let formant_history = new FormantHistory({
+			history_max_length: blocks.length
+		});
+
+		formant_history.init();
+
+
 
 		application_state.initialized = true;
 
 		const run = () => {
 			let block = blocks[block_index];
 
-			memcpy_from_to(block._data, block_memory.signal_data);
 
 			// WASM block
 			let s = performance.now();
-			run_lpc(block_data);
+			let result = formant_analyzer.analyze(block, block_index);
 			let e = performance.now();
 			console.log(`\n [wasm] run_lpc: ${e - s}ms`)
 
-			// JS block
-			s = performance.now()
-			let formants = get_formants_from_memory(block_data, block_memory, block_index);
-			formant_history = add_formants_to_history(formants, formant_history);
-			e = performance.now()
-			console.log(`[js] normalize: ${e - s}ms`);
+			if (result.success) {
+				// JS block
+				s = performance.now()
+				let formants = result.formants;
+				formant_history.add_formants_for_timestep(formants, block_index);
+				e = performance.now()
+				console.log(`[js] normalize: ${e - s}ms`);
+			}
 		}
 
 		const render = () => {
-			render_filter_envelope(block_memory, formant_history, timeseries_ctx);
-			render_formant_bars(block_memory, formant_history, formant_ctx);
-			render_entire_waveform(signal._data, clip_ctx, block_index, settings);
+			render_filter_envelope(formant_analyzer, formant_history, timeseries_ctx);
+			render_formant_bars(formant_analyzer, formant_history, formant_ctx);
+			render_entire_waveform(signal, clip_ctx, block_index, settings);
 		};
 
 		window.addEventListener('keydown', e => {

@@ -1,6 +1,6 @@
 import { GlobalConfiguration } from "./configuration";
-import { Formant, FormantAverage, FormantHistory } from "./formants";
-
+import { FormantHistory  } from "./formants";
+import { FormantAverage, Formant } from "./formants/data";
 
 export const get_fullscreen_canvas_context = (canvas_id : string) => {
 	let canvas = <HTMLCanvasElement> document.getElementById(canvas_id);
@@ -15,7 +15,7 @@ export const get_canvas_context = (canvas_id : string) => {
 
 	let client_rect = canvas.getBoundingClientRect();
 	canvas.width = client_rect.width;
-	canvas.height = client_rect.height
+	canvas.height = client_rect.height;
 
 	return canvas.getContext('2d');
 };
@@ -30,25 +30,29 @@ export const plot_formant_bars = (history : FormantHistory, settings: GlobalConf
     let nyquist_limit = settings.sample_rate_hz / 2;
     let x, y;
 
-	ctx.fillStyle = 'black';
-	history.raw_formants.forEach(formants => {
+	let raw_formants = history.get_raw_formants();
+	let averages = history.get_averages();
+	let max_length = history.get_max_length();
+
+	ctx.fillStyle = 'blue';
+	raw_formants.forEach(formants => {
 		formants.forEach(formant => {
 			let y = ctx.canvas.height - ind2x(formant.frequency, nyquist_limit, ctx.canvas.height);
-			let x = ind2x(formant.time_step - offset, history.max_length, ctx.canvas.width);
+			let x = ind2x(formant.time_step - offset, max_length, ctx.canvas.width);
 			ctx.fillRect(x - 2, y - 2, 4, 4);
 		});
 	})
 
 	ctx.fillStyle = 'red';
 	ctx.strokeStyle = 'red';
-	history.averages.forEach((average, i) => {
+	averages.forEach((average, i) => {
 
 		let y_mean = ctx.canvas.height - ind2x(average.mean, nyquist_limit, ctx.canvas.height);
 		let y_std_min = ctx.canvas.height - ind2x(average.mean - average.stdev, nyquist_limit, ctx.canvas.height);
 		let y_std_max = ctx.canvas.height - ind2x(average.mean + average.stdev, nyquist_limit, ctx.canvas.height);
 
-		let x_min = ind2x(0, history.max_length, ctx.canvas.width);
-		let x_max = ind2x(history.max_length, history.max_length, ctx.canvas.width);
+		let x_min = ind2x(0, max_length, ctx.canvas.width);
+		let x_max = ind2x(max_length, max_length, ctx.canvas.width);
 
 		ctx.beginPath();
 		ctx.moveTo(x_min, y_mean);
@@ -63,8 +67,8 @@ export const plot_formant_bars = (history : FormantHistory, settings: GlobalConf
 
 		ctx.beginPath();
 		average.formant_data.forEach((formant, i) => {
-			y = ctx.canvas.height - ind2x(formant.frequency,nyquist_limit,ctx.canvas.height);
-            x = ind2x(formant.time_step - offset, history.max_length, ctx.canvas.width);
+			y = ctx.canvas.height - ind2x(formant.frequency, nyquist_limit, ctx.canvas.height);
+            x = ind2x(formant.time_step - offset, max_length, ctx.canvas.width);
 			
 			ctx.fillRect(x - 2, y - 2, 4, 4);
 
@@ -163,6 +167,7 @@ export const highlight_timeslice = (start:number, end:number, N:number, ctx:Canv
 	let h = ctx.canvas.height;
 	let w = x_end - x_start;
 
+	ctx.strokeStyle = 'red';
 	ctx.beginPath()
 	ctx.moveTo(x_start, y);
 	ctx.lineTo(x_start, y + h);
@@ -173,6 +178,7 @@ export const highlight_timeslice = (start:number, end:number, N:number, ctx:Canv
 	ctx.lineTo(x_end, y + h);
 	ctx.stroke()
 
+	ctx.fillStyle = 'red';
 	ctx.globalAlpha = 0.2;
 	ctx.fillRect(x_start, y, w, h);
 	ctx.globalAlpha = 1.0;
