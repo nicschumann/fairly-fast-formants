@@ -1,19 +1,46 @@
-import { text } from "stream/consumers";
 import { GlobalConfiguration } from "./configuration";
 import { Formant, FormantAverage, FormantHistory } from "./formants";
 
 
-export const  get_fullscreen_canvas_context = (canvas_id : string) => {
+export const get_fullscreen_canvas_context = (canvas_id : string) => {
 	let canvas = <HTMLCanvasElement> document.getElementById(canvas_id);
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 	return canvas.getContext('2d');
 };
 
-export const plot_formant_bars = (history : FormantHistory, settings: GlobalConfiguration, ctx: CanvasRenderingContext2D) => {
+
+export const get_canvas_context = (canvas_id : string) => {
+	let canvas = <HTMLCanvasElement> document.getElementById(canvas_id);
+
+	let client_rect = canvas.getBoundingClientRect();
+	canvas.width = client_rect.width;
+	canvas.height = client_rect.height
+
+	return canvas.getContext('2d');
+};
+
+export const resize_canvas = (ctx: CanvasRenderingContext2D) => {
+	let rect = ctx.canvas.getBoundingClientRect();
+	ctx.canvas.width = rect.width;
+	ctx.canvas.height = rect.height;
+}
+
+export const plot_formant_bars = (history : FormantHistory, settings: GlobalConfiguration, ctx: CanvasRenderingContext2D, offset : number = 0) => {
     let nyquist_limit = settings.sample_rate_hz / 2;
     let x, y;
 
+	ctx.fillStyle = 'black';
+	history.raw_formants.forEach(formants => {
+		formants.forEach(formant => {
+			let y = ctx.canvas.height - ind2x(formant.frequency, nyquist_limit, ctx.canvas.height);
+			let x = ind2x(formant.time_step - offset, history.max_length, ctx.canvas.width);
+			ctx.fillRect(x - 2, y - 2, 4, 4);
+		});
+	})
+
+	ctx.fillStyle = 'red';
+	ctx.strokeStyle = 'red';
 	history.averages.forEach((average, i) => {
 
 		let y_mean = ctx.canvas.height - ind2x(average.mean, nyquist_limit, ctx.canvas.height);
@@ -31,13 +58,13 @@ export const plot_formant_bars = (history : FormantHistory, settings: GlobalConf
 		ctx.globalAlpha = 0.2;
 		ctx.fillRect(x_min, y_std_min, x_max, 2 * (y_mean - y_std_min));
 		ctx.globalAlpha = 1.0;
-		ctx.fillText(`[F${i + 1}] mean: ${average.mean.toFixed(0)}Hz, stdev: ${average.stdev.toFixed(0)}Hz (mean of ${average.formant_data.length})`, x_min + 5, y_std_min + 10);
+		ctx.fillText(`[F${i + 1}] mean: ${average.mean.toFixed(0)}Hz, stdev: ${average.stdev.toFixed(0)}Hz (${average.formant_data.length} samples)`, x_min + 5, y_std_min + 10);
 
 
 		ctx.beginPath();
 		average.formant_data.forEach((formant, i) => {
 			y = ctx.canvas.height - ind2x(formant.frequency,nyquist_limit,ctx.canvas.height);
-            x = ind2x(formant.time_step, history.max_length, ctx.canvas.width);
+            x = ind2x(formant.time_step - offset, history.max_length, ctx.canvas.width);
 			
 			ctx.fillRect(x - 2, y - 2, 4, 4);
 
@@ -78,16 +105,17 @@ export const plot_formant_average = (formant : FormantAverage, settings : Global
 	let x_min = ind2x(formant.mean - formant.stdev, settings.sample_rate_hz / 2, ctx.canvas.width);
 	let y = amp2y(0, ctx.canvas.height, offset);
 
+	ctx.fillStyle = 'red';
 	ctx.globalAlpha = 0.2;
 	ctx.fillRect(x_min, 0, 2 * (x - x_min), ctx.canvas.height);
 	ctx.globalAlpha = 1.0;
 
-
+	ctx.strokeStyle = 'red';
 	ctx.beginPath();
 	ctx.moveTo(x, 0);
 	ctx.lineTo(x, ctx.canvas.height);
 	ctx.stroke();
-    ctx.fillText(`F: ${formant.mean.toFixed(0)} Hz (mean of ${formant.formant_data.length})`, x + 2, y - 200);
+    ctx.fillText(`F: ${formant.mean.toFixed(0)} Hz (${formant.formant_data.length} samples)`, x + 2, y - 200);
 }
 
 
@@ -115,7 +143,7 @@ export const plot_samples = (b, N, ctx, offset=0) => {
 	ctx.stroke();
 }
 
-export const plot_samples_f32a = (b : Float32Array, N, ctx, offset=0, scalefactor=1.0) => {
+export const plot_samples_f32a = (b : Float32Array, N:number, ctx, offset=0, scalefactor=1.0) => {
 	ctx.beginPath()
 	ctx.moveTo(ind2x(0, N, ctx.canvas.width), amp2y(b[0], ctx.canvas.height, offset))
 	
@@ -127,6 +155,29 @@ export const plot_samples_f32a = (b : Float32Array, N, ctx, offset=0, scalefacto
 	ctx.stroke();
 }
 
+export const highlight_timeslice = (start:number, end:number, N:number, ctx:CanvasRenderingContext2D) => {
+
+	let x_start = ind2x(start, N, ctx.canvas.width);
+	let x_end = ind2x(end, N, ctx.canvas.width);
+	let y = 0;
+	let h = ctx.canvas.height;
+	let w = x_end - x_start;
+
+	ctx.beginPath()
+	ctx.moveTo(x_start, y);
+	ctx.lineTo(x_start, y + h);
+	ctx.stroke()
+
+	ctx.beginPath()
+	ctx.moveTo(x_end, y);
+	ctx.lineTo(x_end, y + h);
+	ctx.stroke()
+
+	ctx.globalAlpha = 0.2;
+	ctx.fillRect(x_start, y, w, h);
+	ctx.globalAlpha = 1.0;
+
+}
 
 /* NOTE(Nic): these need to be refactored to take a "rendering rect" that says 
  * where they should be rendered, and what the width and height of the renderable area is.

@@ -1,4 +1,5 @@
 import { BlockData } from 'src-wasm';
+import { GlobalConfiguration } from './configuration';
 import { BlockMemory } from './memory';
 
 export interface Formant {
@@ -21,7 +22,7 @@ export interface FormantHistory {
     averages : FormantAverage[]
 };
 
-export const initialize_history = (formants_to_track: number, max_length: number, alpha : number = 0.01) : FormantHistory => {
+export const initialize_history = (max_length : number) : FormantHistory => {
     return {
         max_length: max_length,
         raw_formants: [],
@@ -66,6 +67,8 @@ export const add_formants_to_history = (formants : Formant[], history: FormantHi
     let local_averages = [...history.averages];
     if (history.raw_formants.length >= history.max_length) { history.raw_formants.shift(); }
 
+    const VALID_STDEVS = 3.25;
+
     history.raw_formants.push(formants);
     let new_averages : FormantAverage[] = [];
 
@@ -80,7 +83,8 @@ export const add_formants_to_history = (formants : Formant[], history: FormantHi
 
         // maybe add some decaying weighting over time here?
         // or do this as a function of the length?
-        if (min_score.error < 3.0 * average.stdev) {
+        let MAX_ERROR = 150;
+        if (min_score.error < MAX_ERROR) {
             average = update_average_with_formant(average, best_candidate, history);
             new_averages.push(average);
             local_formants.splice(min_score.index, 1);
