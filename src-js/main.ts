@@ -3,22 +3,19 @@ import * as math from 'mathjs';
 import './style/reset.css';
 import './style/main.css';
 
-// import init, { BlockData, run_lpc } from 'src-wasm';
-
 import {GlobalConfiguration, settings} from './configuration';
-import { get_file_blocks, get_file_blocks_f32a } from './file';
+import { get_file_blocks_f32a } from './file';
 import { get_microphone_node } from './microphone';
 
 import { FormantAnalyzer, FormantHistory } from './formants';
-import { add_formants_to_history, initialize_history } from './formants/data';
 import { get_canvas_context, resize_canvas, plot_formant, plot_formant_average, plot_samples_f32a, plot_formant_bars, highlight_timeslice } from './visualizer';
 
 const good_tests = [
-	'test/uh-fu.wav',
-	'test/um-fu.wav',
-	'test/lm-fu.wav',
-	'test/lm-fr.wav',
-	'test/nic-ah.m4a'
+	'/test/uh-fu.wav',
+	'/test/um-fu.wav',
+	'/test/lm-fu.wav',
+	'/test/lm-fr.wav',
+	'/test/nic-ah.m4a'
 ]
 
 const sample_file_path = good_tests[3];

@@ -8,8 +8,9 @@
     "vite-plugin-wasm-pack": "^0.1.9"
   },
   "scripts": {
-    "dev": "vite",
-    "js": "vite build",
+    "dev": "vite --config vite.site.config.js",
+    "build-lib": "vite build --config vite.build.config.js",
+    "build-site": "vite build --config vite.site.config.js",
     "js-clean": "rm -rf dist",
     "wasm": "wasm-pack build ./src-wasm --target web",
     "wasm-clean": "rm -rf ./src-wasm/pkg"
