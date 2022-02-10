@@ -42,7 +42,7 @@ export function get_blocks_from_signal(signal : math.Matrix, settings: GlobalCon
 	}
 
 	let t_end = performance.now();
-	console.log(`get blocks from signal: ${t_end - t_start}ms`);
+	console.log(`[file] get blocks from signal: ${t_end - t_start}ms`);
 
 	return blocks
 }

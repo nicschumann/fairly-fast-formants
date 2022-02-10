@@ -5,5 +5,5 @@ export default defineConfig({
   build: {
     minify: false
   },
-  plugins: [wasmPack(['./src-wasm'])]
+  plugins: [wasmPack(['./formants-wasm'])]
 });

@@ -7,7 +7,7 @@ import {GlobalConfiguration, settings} from './configuration';
 import { get_file_blocks_f32a } from './file';
 import { get_microphone_node } from './microphone';
 
-import { FormantAnalyzer, FormantHistory } from './formants';
+import { FormantAnalyzer, FormantHistory } from '../formants-js';
 import { get_canvas_context, resize_canvas, plot_formant, plot_formant_average, plot_samples_f32a, plot_formant_bars, highlight_timeslice } from './visualizer';
 
 const good_tests = [
@@ -42,14 +42,8 @@ const application_state : ApplicationState = {
 
 
 const render_formant_bars = (_ : FormantAnalyzer, formant_history : FormantHistory, ctx : CanvasRenderingContext2D, offset : number = 0) => {
-	let s = performance.now()
-
 	ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-
 	plot_formant_bars(formant_history, settings, ctx, offset);
-
-	let e = performance.now()
-	console.log(`[js] paint: ${e - s}ms`)
 }
 
 const render_filter_envelope = (formant_analyzer : FormantAnalyzer, formant_history : FormantHistory, ctx : CanvasRenderingContext2D, offset : number = 0) => {
@@ -207,8 +201,10 @@ const setup_static_mode = (state : ApplicationState) => {
 
 
 		application_state.initialized = true;
+		let total_work_ms = 0;
 
 		const run = () => {
+			
 			let block = blocks[block_index];
 
 
@@ -216,7 +212,8 @@ const setup_static_mode = (state : ApplicationState) => {
 			let s = performance.now();
 			let result = formant_analyzer.analyze(block, block_index);
 			let e = performance.now();
-			console.log(`\n [wasm] run_lpc: ${e - s}ms`)
+			console.log(`\n[wasm] lpc, envelope, and maxima: ${e - s}ms`)
+			total_work_ms += e - s
 
 			if (result.success) {
 				// JS block
@@ -224,14 +221,21 @@ const setup_static_mode = (state : ApplicationState) => {
 				let formants = result.formants;
 				formant_history.add_formants_for_timestep(formants, block_index);
 				e = performance.now()
-				console.log(`[js] normalize: ${e - s}ms`);
+				console.log(`[js] normalize and average: ${e - s}ms`);
+				total_work_ms += e - s
 			}
 		}
 
 		const render = () => {
+			let s = performance.now()
 			render_filter_envelope(formant_analyzer, formant_history, timeseries_ctx);
 			render_formant_bars(formant_analyzer, formant_history, formant_ctx);
 			render_entire_waveform(signal, clip_ctx, block_index, settings);
+			let e = performance.now()
+			total_work_ms += e - s;
+			console.log(`[render] draw plots: ${e - s}ms`);
+			console.log(`[total]: ${total_work_ms}ms`);
+			total_work_ms = 0;
 		};
 
 		window.addEventListener('keydown', e => {

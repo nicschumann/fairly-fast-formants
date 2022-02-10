@@ -54,3 +54,5 @@ You should now have a dev server running the application at `localhost:3000`.
 - https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.4905&rep=rep1&type=pdf
 
 - https://wiki.aalto.fi/display/ITSP/Pre-emphasis (pre-emphasis filtering...)
+
+- https://github.com/BYU-ODH/VowelCat (university project building a realtime formant tracking interface... a bit old, but has some references worth looking at.)

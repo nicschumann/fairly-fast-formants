@@ -1,9 +1,10 @@
+# node dependencies
 node_modules
 
 
 # rust artifacts
-src-wasm/pkg
-src-wasm/target
+formants-wasm/pkg
+formants-wasm/target
 
 # Compiled/transpiled outputs
 dist

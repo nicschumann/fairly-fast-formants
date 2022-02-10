@@ -9,13 +9,18 @@
   },
   "scripts": {
     "dev": "vite --config vite.site.config.js",
+
     "build-lib": "vite build --config vite.build.config.js",
     "build-site": "vite build --config vite.site.config.js",
-    "js-clean": "rm -rf dist",
-    "wasm": "wasm-pack build ./src-wasm --target web",
-    "wasm-clean": "rm -rf ./src-wasm/pkg"
+    "build-wasm": "wasm-pack build ./formants-wasm --target web",
+    
+    "clean-wasm": "rm -rf ./formants-wasm/pkg",
+    "clean-js": "rm -rf dist"
   },
-  "dependencies": {
+  "peerDependencies": {
     "mathjs": "^10.1.1"
+  },
+  "peerDependenciesMeta": {
+    "mathjs": { "optional": true }
   }
 }

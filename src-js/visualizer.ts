@@ -1,6 +1,6 @@
 import { GlobalConfiguration } from "./configuration";
-import { FormantHistory  } from "./formants";
-import { FormantAverage, Formant } from "./formants/data";
+import { FormantHistory  } from "../formants-js";
+import { FormantAverage, Formant } from "../formants-js/data";
 
 export const get_fullscreen_canvas_context = (canvas_id : string) => {
 	let canvas = <HTMLCanvasElement> document.getElementById(canvas_id);

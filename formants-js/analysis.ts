@@ -1,4 +1,4 @@
-import init, { BlockData, run_lpc } from 'src-wasm';
+import init, { BlockData, run_lpc } from 'formants-wasm';
 import { BlockMemory, get_block_memory, memcpy_from_to } from './memory';
 import { Formant, get_formants_from_memory } from './data';
 

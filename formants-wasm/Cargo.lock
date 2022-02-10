@@ -52,6 +52,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "formants-wasm"
+version = "0.1.0"
+dependencies = [
+ "cfg-if 1.0.0",
+ "console_error_panic_hook",
+ "nalgebra",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+ "web-sys",
+ "wee_alloc",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -218,20 +231,6 @@ dependencies = [
  "num-traits",
  "paste",
  "wide",
-]
-
-[[package]]
-name = "src-wasm"
-version = "0.1.0"
-dependencies = [
- "cfg-if 1.0.0",
- "console_error_panic_hook",
- "js-sys",
- "nalgebra",
- "wasm-bindgen",
- "wasm-bindgen-test",
- "web-sys",
- "wee_alloc",
 ]
 
 [[package]]
