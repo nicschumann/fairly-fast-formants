@@ -11,10 +11,11 @@ export class FormantHistory {
 
     constructor (settings : FormantHistorySettings) {
         this.#max_length = settings.history_max_length;
+        this.#history_data = initialize_history(this.#max_length);
     }
 
     init () {
-        this.#history_data = initialize_history(this.#max_length);
+        // it's a nop right now.
     }
 
     add_formants_for_timestep (formants: Formant[], timestep: number) {

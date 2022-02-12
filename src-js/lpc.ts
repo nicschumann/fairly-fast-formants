@@ -1,5 +1,4 @@
 import * as math from 'mathjs';
-import { GlobalConfiguration } from "./configuration"
 
 
 const autocorrelate = (x : math.Matrix, p : number) : math.Matrix => {
