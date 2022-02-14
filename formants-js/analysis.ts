@@ -1,6 +1,6 @@
 import init, { BlockData, run_lpc } from 'formants-wasm';
 import { BlockMemory, get_block_memory, memcpy_from_to } from './memory';
-import { Formant, get_formants_from_memory } from './data';
+import { Formant, Pole, get_formants_from_memory, get_poles_from_memory } from './data';
 
 
 export interface FormantAnalysisSettings {
@@ -14,6 +14,7 @@ export interface FormantAnalysisResult {
     valid_input : boolean,
     success : boolean,
     formants : Formant[]
+    poles: Pole[]
 }
 
 export class FormantAnalyzer {
@@ -59,7 +60,7 @@ export class FormantAnalyzer {
 	analyze( signal : Float32Array, timestep : number = 0 ) : FormantAnalysisResult {
         if (signal.length != this.#window_length_samples) { 
             // TODO(Nic): add a verbose mode and a log statement here.
-            return { valid_input: false, success: false, formants: []};
+            return { valid_input: false, success: false, formants: [], poles: []};
         }
 
         memcpy_from_to(signal, this.#block_memory.signal_data);
@@ -73,11 +74,18 @@ export class FormantAnalyzer {
                 this.#block_memory, 
                 timestep
             );
+
+            let poles = get_poles_from_memory(
+                this.#block_data,
+                this.#block_memory,
+                timestep
+            );
             
             return {
                 valid_input: true,
                 success,
-                formants
+                formants,
+                poles
             }
             
         } else {
@@ -85,7 +93,8 @@ export class FormantAnalyzer {
             return {
                 valid_input: true,
                 success,
-                formants: []
+                formants: [],
+                poles: []
             };
 
         }

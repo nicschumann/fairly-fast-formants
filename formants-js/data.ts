@@ -1,4 +1,4 @@
-import { BlockData } from 'src-wasm';
+import { BlockData } from 'formants-wasm';
 import { BlockMemory } from './memory';
 
 export interface Formant {
@@ -7,6 +7,14 @@ export interface Formant {
     frequency : number,
     amplitude : number,
 };
+
+export interface Pole {
+    time_step : number,
+    imag: number,
+    real: number,
+    frequency : number,
+    bandwidth : number,
+}
 
 export interface FormantAverage {
     mean : number,
@@ -76,18 +84,20 @@ export const add_formants_to_history = (formants : Formant[], history: FormantHi
         let scores = local_formants.map((f, i) => {return { error: Math.abs(f.frequency - average.mean), index: i}});
         scores.sort((a,b) => { return a.error - b.error});
 
-        let min_score = scores[0];
-        let best_candidate = local_formants[min_score.index];
+        if (scores.length > 0) {
+            let min_score = scores[0];
+            let best_candidate = local_formants[min_score.index];
 
-        // maybe add some decaying weighting over time here?
-        // or do this as a function of the length?
-        let MAX_ERROR = 150;
-        if (min_score.error < MAX_ERROR) {
-            average = update_average_with_formant(average, best_candidate, history);
-            new_averages.push(average);
-            local_formants.splice(min_score.index, 1);
+            // maybe add some decaying weighting over time here?
+            // or do this as a function of the length?
+            let MAX_ERROR = 150;
+            if (min_score.error < MAX_ERROR) {
+                average = update_average_with_formant(average, best_candidate, history);
+                new_averages.push(average);
+                local_formants.splice(min_score.index, 1);
+            }
         }
-
+        
         if (local_formants.length == 0) { break; }
     }
 
@@ -121,6 +131,31 @@ export const get_formants_from_memory = (block_data: BlockData, block_memory: Bl
     return formants;
     // return normalize_formants(formants);
 };
+
+export const get_poles_from_memory = (block_data: BlockData, block_memory: BlockMemory, time_step: number) : Pole[] => {
+    let pole_count = block_data.pole_count();
+    
+    let pole_real_values = block_memory.pole_imag_values.slice(0, pole_count);
+    let pole_imag_values = block_memory.pole_real_values.slice(0, pole_count);
+    let pole_frequencies = block_memory.pole_frequencies.slice(0, pole_count);
+    let pole_bandwidths = block_memory.pole_bandwidths.slice(0, pole_count);
+
+    let poles : Pole[] = [];
+
+    for (let i = 0; i < pole_count; i++) { 
+        poles.push({
+            time_step,
+            real: pole_real_values[i],
+            imag: pole_imag_values[i],
+            frequency: pole_frequencies[i],
+            bandwidth: pole_bandwidths[i]
+        });
+    }
+
+    poles.sort((a,b) => a.frequency - b.frequency);
+
+    return poles;
+}
 
 // VVV below here might not be needed VVV
 
