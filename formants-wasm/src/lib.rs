@@ -1,6 +1,7 @@
 extern crate cfg_if;
 extern crate wasm_bindgen;
 extern crate nalgebra as na;
+extern crate automatica as aut;
 extern crate web_sys;
 
 mod utils;
@@ -10,6 +11,7 @@ mod autocorrelate;
 use cfg_if::cfg_if;
 use wasm_bindgen::prelude::*;
 use na::{DMatrix, Complex};
+use aut::polynomial::{ Poly };
 use std::f32::consts::{ PI };
 use std::convert::TryInto;
 
@@ -53,6 +55,12 @@ pub struct BlockData {
 
     formant_indices : Vec<u32>,
     formant_count : u32,
+
+    pole_real_values : Vec<f32>,
+    pole_imag_values : Vec<f32>,
+    pole_frequencies : Vec<f32>,
+    pole_bandwidths : Vec<f32>,
+    pole_count : u32,
 }
 
 #[wasm_bindgen]
@@ -78,6 +86,11 @@ impl BlockData {
 
         let expected_num_formants = model_order as usize;
         let formant_indices : Vec<u32> = Vec::with_capacity(expected_num_formants);
+
+        let pole_real_values : Vec<f32> = vec![0.0; expected_num_formants];
+        let pole_imag_values : Vec<f32> = vec![0.0; expected_num_formants];
+        let pole_frequencies : Vec<f32> = vec![0.0; expected_num_formants];
+        let pole_bandwidths : Vec<f32> = vec![0.0; expected_num_formants];
         
         // prepare toeplitz indices; we'll use these 
         // to make the toeplitz matrix later.
@@ -130,6 +143,12 @@ impl BlockData {
 
             formant_indices: formant_indices,
             formant_count: 0,
+            
+            pole_real_values: pole_real_values,
+            pole_imag_values: pole_imag_values,
+            pole_frequencies: pole_frequencies,
+            pole_bandwidths: pole_bandwidths,
+            pole_count: 0
         }
     }
 
@@ -155,6 +174,26 @@ impl BlockData {
 
     pub fn formants_count(&self) -> u32 {
         self.formant_count
+    }
+
+    pub fn pole_real_pointer(&self) -> *const f32 {
+        self.pole_real_values.as_ptr()
+    }
+
+    pub fn pole_imag_pointer(&self) -> *const f32 {
+        self.pole_imag_values.as_ptr()
+    }
+
+    pub fn pole_frequencies_pointer(&self) -> *const f32 {
+        self.pole_frequencies.as_ptr()
+    }
+
+    pub fn pole_bandwidths_pointer(&self) -> *const f32 {
+        self.pole_bandwidths.as_ptr()
+    }
+
+    pub fn pole_count(&self) -> u32 {
+        self.pole_count
     }
 
     pub fn get_solved_state(&self) -> bool {
@@ -183,6 +222,7 @@ pub fn run_lpc(block : &mut BlockData) -> bool {
         block.solved = succeeded;
         evaluate_envelope(block);
         extract_maxima(block);
+        find_roots(block);
     }
 
     succeeded
@@ -233,12 +273,60 @@ pub fn solve_coefficients(block: &mut BlockData) -> bool {
     return true;
 }
 
+// Try to solve for the roots of the LPC polynomial
+// and evaluate the formants that way...
+
+pub fn find_roots(block: &mut BlockData) {
+    let poly = Poly::new_from_coeffs(&block.coefficients);
+    let roots = poly.iterative_roots();
+    let twopi = 2.0 * PI;
+    let f_s = block.sample_rate as f32;
+
+    block.pole_count = 0;
+
+    // log!("\nrun:");
+
+    let mut j = 0;
+    for i in 0..roots.len() {
+        let root = roots[i];
+
+        // ignore purely real or imaginary roots;
+        if root.im.abs() < 0.0001 || root.re.abs() < 0.0001 { continue; }
+        // ignore conjugate pairs, by randomly selecting the positive pair.
+        if root.im < 0.0 { continue; }
+
+        let angle = root.arg();
+        let magnitude = root.norm();
+        let freq = (f_s / twopi) * angle;
+        let bandwidth = (f_s / PI) * (1.0 / magnitude).ln().abs();
+
+        block.pole_real_values[j] = root.re;
+        block.pole_imag_values[j] = root.im;
+        block.pole_frequencies[j] = freq;
+        block.pole_bandwidths[j] = bandwidth;
+        block.pole_count += 1;
+        j += 1;
+
+        // log!("{:?}", roots[i]);
+        // log!("\nfreq: {} Hz", freq);
+        // log!("bw: {} Hz", bandwidth);
+        // log!("mag: {}\n", magnitude);
+
+    }
+    // log!("end run\n");
+}
+
+
+// Directly evaluate the spectrum of the filter envelope
+// and return the maxima of the filter.
 pub fn evaluate_envelope(block: &mut BlockData) {
     for i in 0..block.frequency_bins {
         let mut sum : Complex<f32> = Complex::new(block.coefficients[0], 0.0);
         let z = block.filter_inputs[i];
+
         
         for j in 1..(block.model_order + 1) {
+            // remove all real and imaginary roots.
             let term = block.coefficients[j] * z.powu(j as u32);
             sum += term;
         }
