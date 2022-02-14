@@ -3,6 +3,7 @@
     import File from './routes/File.svelte';
     import Home from './components/Home.svelte';
     import Header from './components/Header.svelte';
+    import Microphone from './routes/Microphone.svelte';
 
     export let url = "";
 
@@ -12,6 +13,9 @@
     <Header/>
     <Route path="/">
         <Home />
+    </Route>
+    <Route path="/mic">
+        <Microphone />
     </Route>
     <Route path="file/:name" let:params>
         <File name="{params.name}"/>
@@ -31,5 +35,13 @@
         height:100%;
         background-color: #fbfbfb;
         box-sizing: border-box;
+    }
+
+    :global(.debug-red) {
+        border: 1px solid red !important;
+    }
+
+    :global(.debug-blue) {
+        border: 1px solid blue !important;
     }
 </style>

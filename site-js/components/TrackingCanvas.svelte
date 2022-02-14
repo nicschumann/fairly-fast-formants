@@ -2,10 +2,10 @@
     import { onMount, onDestroy } from 'svelte';
     import { formants } from '../state';
     import { GlobalConfiguration, settings } from '../lib/configuration';
-    import { FormantAnalyzer, FormantHistory } from '../../formants-js';
+    import { FormantAnalyzer, FormantHistory, FormantTracker } from '../../formants-js';
 
     export let id : string = "tracking-canvas";
-    export let render : (F: FormantAnalyzer, H: FormantHistory, C: CanvasRenderingContext2D, S: GlobalConfiguration, O:number) => void = () => {};
+    export let render : (F: FormantAnalyzer, H: FormantHistory, P: FormantTracker, C: CanvasRenderingContext2D, S: GlobalConfiguration, O:number) => void = () => {};
     export let offset : number = 0;
 
     interface ComponentState {
@@ -18,8 +18,11 @@
 
     const set_canvas_size = () => {
         let rect = canvas_state.ctx.canvas.getBoundingClientRect();
+        // console.log(rect);
         canvas_state.ctx.canvas.width = rect.width;
-        canvas_state.ctx.canvas.height = rect.height;
+
+        // TODO(Nic): make it dynamic...
+        canvas_state.ctx.canvas.height = 400;
     }
 
     onMount(async () => {
@@ -34,25 +37,14 @@
     })
 
     $: if (canvas_state.ctx != null) {
-        render($formants.analyzer, $formants.history, canvas_state.ctx, settings, offset);
+        render($formants.analyzer, $formants.history, $formants.poles, canvas_state.ctx, settings, offset);
     }
 </script>
 
-<div class="timeslice-canvas">
-    <canvas {id} class="timeslice-canvas-analyzer"></canvas>
-</div>
+<canvas {id} class="canvas-analyzer"></canvas>
 
 <style>
-    .timeslice-canvas { 
-        width:100%;
-        height:100%;
-
-        border:1px solid black;
-        border-radius: 5px;
-        box-shadow: black 1px 1px 0px;
-    }
-
-    .timeslice-canvas-analyzer {
+    .canvas-analyzer {
         width:100%;
         height:100%;
     }

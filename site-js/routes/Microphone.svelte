@@ -1,77 +1,72 @@
-<script lang='ts'>
+<script lang="ts">
+    import { onDestroy } from 'svelte';
     import { settings } from '../lib/configuration';
-    import { get_file_blocks_f32a } from '../lib/file';
-    import { test_data, AudioFileHandle } from '../state/data';
     import { init, signal } from '../state';
     import TrackingCanvas from '../components/TrackingCanvas.svelte';
     import { render_formant_bars, render_timeslice, render_formant_plane } from '../lib/visualization';
 
-
-    export let name : string = '';
-
-    const data : AudioFileHandle = test_data[name];
-
-    const file_state = {
-        data: test_data[name],
+    let microphone_data = {
         initialized: false,
-        block_index: 0,
-        block_data: [],
-    }
+        signal: null,
+        node: null,
+        interval_id: null,
+        timestep: 0,
+    };
 
-    const prepare_audio_context = async () => {
+    const prepare_analyzer_node = async () => {
+        await init(settings.history_length);
+
         let audio_context = new AudioContext({sampleRate: settings.sample_rate_hz});
-		let {blocks} = await get_file_blocks_f32a(file_state.data.filepath, audio_context, settings);
-		await init(blocks.length);
+        let user_audio = await navigator.mediaDevices.getUserMedia({audio: true});
+	
+        let source_node = audio_context.createMediaStreamSource(user_audio);
+        let gain_node = audio_context.createGain();
+        let analyzer_node = new AnalyserNode(audio_context, {fftSize: settings.frequency_bins});
 
-        file_state.block_index = 2;
-        file_state.block_data = blocks;
-        file_state.initialized = true;
+        source_node.connect(gain_node);
+        gain_node.connect(analyzer_node);
 
-        signal.set({
-            signal: file_state.block_data[file_state.block_index], 
-            timestep: file_state.block_index
-        });
+        let block_size = Math.floor(settings.sample_window_length_ms * settings.sample_rate_hz)
+        microphone_data.node = analyzer_node;
+        microphone_data.initialized = true;
+        microphone_data.signal = new Float32Array(block_size);
+
+        microphone_data.interval_id = setInterval(() => {
+            if (microphone_data.initialized) {
+                analyzer_node.getFloatTimeDomainData(microphone_data.signal);
+                if (microphone_data.signal.length == block_size) {
+                    signal.set({signal: microphone_data.signal, timestep: microphone_data.timestep});
+                    microphone_data.timestep += 1;
+                }
+            }
+        }, settings.frametime_ms);
     }
 
-    const go_to_next_block = async () => {
-        let prev_index =  file_state.block_index;
-        file_state.block_index = Math.min(prev_index + 1, file_state.block_data.length);
+    onDestroy(async () => {
+        if (microphone_data.initialized) { clearInterval(microphone_data.interval_id); }
+    });
 
-        signal.set({
-            signal: file_state.block_data[file_state.block_index], 
-            timestep: file_state.block_index
-        });
-    }
-
-    const go_to_prev_block = async () => {
-        let prev_index =  file_state.block_index;
-        file_state.block_index = Math.max(prev_index - 1, 0);
-
-        signal.set({
-            signal: file_state.block_data[file_state.block_index], 
-            timestep: file_state.block_index
-        });
-    }
+    $: offset = Math.max(0, microphone_data.timestep - settings.history_length);
 </script>
 
+
+
 <section class="file-overview file-section">
-    <h1 class="file-name">{file_state.data.name}</h1>
-    {#if !file_state.initialized}
-        <button class="start-analysis" on:click="{prepare_audio_context}">Begin Analysis</button>
-    {:else}
-        <button class="prev-block" on:click="{go_to_prev_block}">Prev</button>   
-        <button class="next-block" on:click="{go_to_next_block}">Next</button>   
+    <h1 class="file-name">Mic Input</h1>
+    {#if !microphone_data.initialized}
+        <button on:click="{prepare_analyzer_node}">Begin Analysis</button>
     {/if}
 </section>
 
+
 <section class="file-analysis file-section">
-    {#if file_state.initialized }
+    {#if microphone_data.initialized }
         <section class="analysis-tool">
             <div class="analysis-tool-title">Timeslice View</div>
             <div class="canvas-container">
                 <div class="y-axis-label axis-label"><h6>Amplitude</h6></div>
                 <div class="x-axis-label axis-label"><h6>Time (ms) / <span class="blue">Freq (Hz)</span></h6></div>
-                <TrackingCanvas id="timeslice-canvas" render="{render_timeslice}" />
+                <TrackingCanvas offset="{offset}" id="timeslice-canvas" render="{render_timeslice}" />
             </div> 
         </section>
 
@@ -80,7 +75,7 @@
             <div class="canvas-container">
                 <div class="y-axis-label axis-label"><h6>Freq (Hz)</h6></div>
                 <div class="x-axis-label axis-label"><h6>Timeslice</h6></div>
-                <TrackingCanvas id="formants-canvas" render="{render_formant_bars}" />
+                <TrackingCanvas offset="{offset}" id="formants-canvas" render="{render_formant_bars}" />
             </div> 
         </section>
 
@@ -112,7 +107,7 @@
    }
 
    .analysis-tool {
-       width:33%;
+       width:50%;
        margin-left:calc(0.5 * var(--component-margin));
        margin-right:calc(var(--component-margin));
 

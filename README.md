@@ -56,3 +56,9 @@ You should now have a dev server running the application at `localhost:3000`.
 - https://wiki.aalto.fi/display/ITSP/Pre-emphasis (pre-emphasis filtering...)
 
 - https://github.com/BYU-ODH/VowelCat (university project building a realtime formant tracking interface... a bit old, but has some references worth looking at.)
+
+- http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.81.136&rep=rep1&type=pdf (formant and phonetic modeling using a hidden markov model...)
+
+- https://www.researchgate.net/publication/251572340_SourceFilter_Factorial_Hidden_Markov_Model_With_Application_to_Pitch_and_Formant_Tracking (More formant tracking.)
+
+- https://www.researchgate.net/publication/237110905_Algorithm_for_formant_tracking_modification_and_synthesis

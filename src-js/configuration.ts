@@ -11,9 +11,9 @@ export interface GlobalConfiguration {
 };
 
 export const settings : GlobalConfiguration = {
-	sample_window_length_ms: 0.03,
-	sample_rate_hz: 8192, 
-	lpc_model_order: 10,
+	sample_window_length_ms: 0.06,
+	sample_rate_hz: 8192, // 16384, //8192, 
+	lpc_model_order: 8,
 	frequency_bins: 512,
 
 	window_overlap: 0.5,
@@ -21,7 +21,7 @@ export const settings : GlobalConfiguration = {
 
 	// parameters that are relevant for microphone input mode.
 	history_length: 1000,
-	frametime_ms: 16,
+	frametime_ms: 33,
 };
 
 
