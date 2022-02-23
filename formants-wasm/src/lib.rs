@@ -204,11 +204,10 @@ impl BlockData {
 
 #[wasm_bindgen]
 pub fn run_lpc(block : &mut BlockData) -> bool {
-    // apply hann weights???
-    weights::apply_hann_weights(block);
-    
     // pre-emphasis
+    // TODO(Nic): remove a linear trend from the data...
     preemphasis_filter(block);
+    weights::apply_hann_weights(block);
 
     // run main
     autocorrelate::autocorrelate(block);
@@ -217,7 +216,7 @@ pub fn run_lpc(block : &mut BlockData) -> bool {
 
     let succeeded = solve_coefficients(block);
 
-    // only continue of the data is real.
+    // only continue if the data is real.
     if succeeded {
         block.solved = succeeded;
         evaluate_envelope(block);
@@ -232,7 +231,7 @@ pub fn preemphasis_filter(block: &mut BlockData) {
     let mut prev_signal_step = block.signal[0];
 
     const A : f32  = 1.0;
-    const B : f32 = -0.68;
+    const B : f32 = -0.68; // consider changing to -0.97 for greater prefiltering!
     
     for i in 1..block.block_size {
         let updated_signal_step = A * block.signal[i] + B * prev_signal_step;

@@ -5,7 +5,7 @@ import { Formant, Pole, get_formants_from_memory, get_poles_from_memory } from '
 
 export interface FormantAnalysisSettings {
     model_order: number,
-    window_length_ms: number,
+    window_length_s: number,
     sample_rate_hz: number,
     frequency_bins: number,
 }
@@ -19,7 +19,7 @@ export interface FormantAnalysisResult {
 
 export class FormantAnalyzer {
     #model_order : number;
-    #window_length_ms : number;
+    #window_length_s : number;
     #window_length_samples : number;
     #sample_rate_hz : number;
     #frequency_bins : number;
@@ -30,11 +30,11 @@ export class FormantAnalyzer {
 
 	constructor(settings : FormantAnalysisSettings) {
         this.#model_order = settings.model_order;
-        this.#window_length_ms = settings.window_length_ms;
+        this.#window_length_s = settings.window_length_s;
         this.#sample_rate_hz = settings.sample_rate_hz;
         this.#frequency_bins = settings.frequency_bins;
 
-        this.#window_length_samples = Math.floor(this.#window_length_ms * this.#sample_rate_hz);
+        this.#window_length_samples = Math.floor(this.#window_length_s * this.#sample_rate_hz);
 	}
 
 	async init () : Promise<void> {
@@ -46,8 +46,8 @@ export class FormantAnalyzer {
             this.#model_order, 
             this.#frequency_bins, 
             this.#sample_rate_hz
-        )
-        ;
+        );
+
 		this.#block_memory = get_block_memory(
             this.#block_data,
             this.#window_length_samples,
@@ -58,6 +58,7 @@ export class FormantAnalyzer {
 	}
 
 	analyze( signal : Float32Array, timestep : number = 0 ) : FormantAnalysisResult {
+        console.log(signal);
         if (signal.length != this.#window_length_samples) { 
             // TODO(Nic): add a verbose mode and a log statement here.
             return { valid_input: false, success: false, formants: [], poles: []};

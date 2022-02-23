@@ -2,7 +2,7 @@ import { settings } from '../lib/configuration';
 import { FormantAnalyzer, FormantHistory, FormantTracker } from '../../formants-js';
 import { writable, derived } from 'svelte/store';
 
-const window_length_samples = Math.floor(settings.sample_window_length_ms * settings.sample_rate_hz);
+const window_length_samples = Math.floor(settings.sample_window_length_s * settings.sample_rate_hz);
 
 let initialized : boolean = false;
 
@@ -45,7 +45,7 @@ export const init = async (length : number = settings.history_length) => {
 
     formant_analyzer = new FormantAnalyzer({
         model_order: settings.lpc_model_order,
-        window_length_ms: settings.sample_window_length_ms,
+        window_length_s: settings.sample_window_length_s,
         sample_rate_hz: settings.sample_rate_hz,
         frequency_bins: settings.frequency_bins,
     });
@@ -74,6 +74,7 @@ export const formants = derived(
     signal,
     $signal => {
         if (initialized) {
+            console.log($signal)
             let result = formant_analyzer.analyze($signal.signal, $signal.timestep);
             if (result.success) {
                 pole_tracker.add_poles_for_timestep(result.poles, $signal.timestep);

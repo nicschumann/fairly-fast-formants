@@ -29,7 +29,7 @@ export function get_blocks_from_signal(signal : math.Matrix, settings: GlobalCon
 	const overlap = settings.window_overlap;
 
 	let N = signal.size()[0];
-	let N_w = math.floor(settings.sample_rate_hz * settings.sample_window_length_ms);
+	let N_w = math.floor(settings.sample_rate_hz * settings.sample_window_length_s);
 	let step_size = math.floor(N_w * (1.0 - overlap));
 	let N_b = math.floor((N - N_w) / step_size) + 1
 
@@ -53,7 +53,7 @@ export function get_blocks_from_signal_f32a(signal : Float32Array, settings: Glo
 	const overlap = settings.window_overlap;
 
 	let N = signal.length;
-	let N_w = math.floor(settings.sample_rate_hz * settings.sample_window_length_ms);
+	let N_w = math.floor(settings.sample_rate_hz * settings.sample_window_length_s);
 	let step_size = math.floor(N_w * (1.0 - overlap));
 	let N_b = math.floor((N - N_w) / step_size) + 1
 

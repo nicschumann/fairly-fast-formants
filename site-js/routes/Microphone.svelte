@@ -26,7 +26,7 @@
         source_node.connect(gain_node);
         gain_node.connect(analyzer_node);
 
-        let block_size = Math.floor(settings.sample_window_length_ms * settings.sample_rate_hz)
+        let block_size = Math.floor(settings.sample_window_length_s * settings.sample_rate_hz)
         microphone_data.node = analyzer_node;
         microphone_data.initialized = true;
         microphone_data.signal = new Float32Array(block_size);
