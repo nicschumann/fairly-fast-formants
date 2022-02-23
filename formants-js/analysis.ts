@@ -58,7 +58,6 @@ export class FormantAnalyzer {
 	}
 
 	analyze( signal : Float32Array, timestep : number = 0 ) : FormantAnalysisResult {
-        console.log(signal);
         if (signal.length != this.#window_length_samples) { 
             // TODO(Nic): add a verbose mode and a log statement here.
             return { valid_input: false, success: false, formants: [], poles: []};

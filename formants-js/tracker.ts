@@ -36,16 +36,16 @@ export class FormantTracker {
         let new_tracks : FormantTrack[] = [];
 
         // heuristic fun...
-        console.log('before:');
-        local_poles.forEach(f => {
-            console.log(f.frequency, f.bandwidth);
-        })
-        local_poles = local_poles.filter(p => p.bandwidth < 250);
+        // console.log('before:');
+        // local_poles.forEach(f => {
+        //     console.log(f.frequency, f.bandwidth);
+        // })
+        // local_poles = local_poles.filter(p => p.bandwidth < 250);
 
-        console.log('after:');
-        local_poles.forEach(f => {
-            console.log(f.frequency, f.bandwidth);
-        })
+        // console.log('after:');
+        // local_poles.forEach(f => {
+        //     console.log(f.frequency, f.bandwidth);
+        // })
     
         while (local_tracks.length > 0) {
             let track = local_tracks.shift();

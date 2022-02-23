@@ -74,7 +74,6 @@ export const formants = derived(
     signal,
     $signal => {
         if (initialized) {
-            console.log($signal)
             let result = formant_analyzer.analyze($signal.signal, $signal.timestep);
             if (result.success) {
                 pole_tracker.add_poles_for_timestep(result.poles, $signal.timestep);
