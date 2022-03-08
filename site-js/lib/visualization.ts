@@ -379,10 +379,10 @@ export const render_formant_plane = (_: FormantAnalyzer, formant_history: Forman
 /* NOTE(Nic): these need to be refactored to take a "rendering rect" that says 
  * where they should be rendered, and what the width and height of the renderable area is.
  */
-const amp2y = (amplitude : number, height : number, offset : number = 0) => {
+export const amp2y = (amplitude : number, height : number, offset : number = 0) => {
 	return Math.floor(((amplitude + 1.0) / 2.0) * height) + offset;
 }
 
-const ind2x = (index : number, samples : number, width: number) => {
+export const ind2x = (index : number, samples : number, width: number) => {
 	return Math.floor(index * (width / samples))
 }

@@ -62,6 +62,12 @@ export const init = async (length : number = settings.history_length) => {
     formant_history.init();
 
     initialized = true;
+
+    return {
+        formant_analyzer, 
+        formant_history,
+        pole_tracker
+    }
 };
 
 

@@ -4,6 +4,7 @@
     import Home from './components/Home.svelte';
     import Header from './components/Header.svelte';
     import Microphone from './routes/Microphone.svelte';
+    import TestCase from './routes/TestCase.svelte';
 
     export let url = "";
 
@@ -19,7 +20,10 @@
     </Route>
     <Route path="file/:name" let:params>
         <File name="{params.name}"/>
-    </Route>    
+    </Route>
+    <Route path="testcase" let:params>
+        <TestCase />
+    </Route>       
 </Router>
 
 
