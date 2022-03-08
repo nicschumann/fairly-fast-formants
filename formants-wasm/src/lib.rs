@@ -232,6 +232,7 @@ pub fn preemphasis_filter(block: &mut BlockData) {
 
     const A : f32  = 1.0;
     const B : f32 = -0.68; // consider changing to -0.97 for greater prefiltering!
+    // const B : f32 = -0.40;
     
     for i in 1..block.block_size {
         let updated_signal_step = A * block.signal[i] + B * prev_signal_step;
