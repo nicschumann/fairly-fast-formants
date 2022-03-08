@@ -1,4 +1,4 @@
-import { BlockData } from 'formants-wasm';
+import { BlockData } from '../formants-wasm/pkg';
 import { BlockMemory } from './memory';
 
 export interface Formant {

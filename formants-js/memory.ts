@@ -1,4 +1,4 @@
-import _, {BlockData} from 'formants-wasm';
+import _, {BlockData} from '../formants-wasm/pkg';
 
 export interface BlockMemory {
 	signal_length : number,

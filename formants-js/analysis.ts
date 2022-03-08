@@ -1,4 +1,5 @@
-import init, { BlockData, run_lpc } from 'formants-wasm';
+import init, { BlockData, run_lpc } from '../formants-wasm/pkg';
+// import { memory } from '../formants-wasm/pkg/formants_wasm_bg.wasm';
 import { BlockMemory, get_block_memory, memcpy_from_to } from './memory';
 import { Formant, Pole, get_formants_from_memory, get_poles_from_memory } from './data';
 
@@ -39,9 +40,10 @@ export class FormantAnalyzer {
 
 	async init () : Promise<void> {
         let { memory } = await init();
+        // this.#wasm_memory = wasm_memory();
         this.#wasm_memory = memory;
 
-		this.#block_data = BlockData.new(
+        this.#block_data = BlockData.new(
             this.#window_length_samples, 
             this.#model_order, 
             this.#frequency_bins, 
