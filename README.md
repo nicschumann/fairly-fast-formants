@@ -174,11 +174,13 @@ interface Pole {
      * this pole has the form Ae^ia. Then the frequency is 
      * (sampling_freq / two * pi) * a
      */
-    frequency: float
+    frequency: float,
     /**
      * The bandwidth of the formant represented by this pole.
      * Suppose the pole has the form Ae^ia. Then the bandwidth is
      * (sampling_freq / pi) * ln(1 / A)
+     */
+    bandwidth: float
 }
 ```
 
@@ -202,6 +204,8 @@ analyzer.destroy();
 3. `npm install`
 4. `npm run build-wasm`
 5. `npm run dev`
+
+*Note: you can follow the tutorial [here](https://rustwasm.github.io/book/game-of-life/setup.html) as a rust setup guide.*
 
 You should now have a dev server running the application at `localhost:3000`.
 
