@@ -1,3 +1,4 @@
+import { Pole } from './data';
 import * as math from 'mathjs';
 
 export class FormantFilter {
@@ -6,6 +7,7 @@ export class FormantFilter {
     P : math.Matrix;
     Q : math.Matrix;
     H : math.Matrix;
+    R : math.Matrix;
     x_n_1 : math.Matrix;
     mu_x_n : math.Matrix;
 
@@ -34,10 +36,12 @@ export class FormantFilter {
         /**
          * It is initialized to the mean values of F1, F2, and F3.
          */
+        // could be the average vocal "fingerprint "
+        // for a specific user.
         let x_n_1 = math.matrix([
-            [0.52144739],
-            [1.59367366],
-            [2.54315536],
+            [0],
+            [0],
+            [0],
             [0],
             [0],
             [0],
@@ -54,15 +58,15 @@ export class FormantFilter {
          * Is collected from experimental data in the VTR Formants database.
          */
         let mu_x_n = math.matrix([
-            [0.52144739],
-            [1.59367366],
-            [2.54315536],
-            [0.0013524],
-            [0.00111827],
-            [0.00134155],
-            [-0.00034398],
-            [-0.00049924],
-            [-0.00019122]
+            [521.44739],
+            [1593.67366],
+            [2543.15536],
+            [1.3524],
+            [1.11827],
+            [1.34155],
+            [-0.0034398],
+            [-0.0049924],
+            [-0.0019122]
         ]);
 
         let x_sub_mu = <math.Matrix> math.subtract(x_n_1, mu_x_n)
@@ -78,9 +82,9 @@ export class FormantFilter {
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0.0032652, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0.01132244, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0.01051014],
+            [0, 0, 0, 0, 0, 0, 3.2652, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 11.32244, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 10.51014],
         ])
 
         let Q = math.multiply(math.multiply(F, Q_a), math.transpose(F));
@@ -94,29 +98,53 @@ export class FormantFilter {
             [0, 0, 1, 0, 0, 0, 0, 0, 0]
         ])
 
+        /**
+         * R: Measurement Noise Matrix
+         */
+        let R = math.matrix([
+            [35.3141, 0, 0],
+            [0, 37.5898, 0],
+            [0, 0, 30.7382]
+        ])
+
         this.F = F;
         this.x_n_1 = x_n_1;
         this.mu_x_n = mu_x_n;
         this.P = P;
         this.Q = Q;
         this.H = H;
+        this.R = R
     }
 
-    update_state() {
-        let x_n = math.multiply(this.F, this.x_n_1);
-        return x_n;
+    preprocess(poles: Pole[]) {
+        let frequencies = [[0], [0], [0]];
+
+        poles.slice(0, 3).forEach((pole, i) => {
+            frequencies[i] = [pole.frequency];
+        })
+
+        return math.matrix(frequencies);
     }
 
-    update_uncertainty() {
-        let P_prime = math.multiply(math.multiply(this.F, this.P), math.transpose(this.F));
-        P_prime = <math.Matrix> math.add(P_prime, this.Q);
+    update(z: math.Matrix) {
+        // propogate the current state estimates using the model alone
+        let x_n = math.multiply(this.F, this.x_n_1)
+        let P_n = math.add(math.multiply(math.multiply(this.F, this.P), math.transpose(this.F)), this.Q)
 
-        console.log(P_prime);
+        // calculate the Kalman gain for this observation.
+        let PHt = math.multiply(P_n, math.transpose(this.H));
+        let H_forward = <math.Matrix> math.add(math.multiply(math.multiply(this.H, P_n), math.transpose(this.H)), this.R)
+        let H_inv = math.inv(H_forward);
+        let K = math.multiply(PHt, H_inv);
 
-        this.P = P_prime;   
+        // update the state estimate using the observation and the kalman gain 
+        let z_sub_x = math.subtract(z, math.multiply(this.H, x_n)); // also known as "innovation", lol.
+        let x_n_prime = math.add(x_n, math.multiply(K, z_sub_x));
+        let P_prime = math.subtract(P_n, math.multiply(K, math.multiply(this.H, P_n)))
+
+        this.x_n_1 = <math.Matrix> x_n_prime;
+        this.P = <math.Matrix> P_prime;
+
+        return x_n_prime;
     }
-
-
-
-
 }

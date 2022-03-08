@@ -5,7 +5,7 @@
 
     import { FormantAnalyzer, FormantFilter } from '../../formants-js';
     import TrackingCanvas from '../components/TrackingCanvas.svelte';
-    import { amp2y, ind2x } from '../lib/visualization';
+    import { amp2y, ind2x, plot_samples } from '../lib/visualization';
 
 
 
@@ -15,6 +15,7 @@
         block_index: 0,
         initialized: false,
         results: [],
+        smooth_results: [],
         timing: []
     };
 
@@ -29,21 +30,55 @@
             frequency_bins: settings.frequency_bins
         })
 
-        filter.update_state();
-        filter.update_uncertainty();
-
-
         await low_order_formant_analyzer.init();
 
         test_case_state.audio.forEach((frame, i) => {
             let data_window = new Float32Array(frame);
             let s = performance.now();
             let res = low_order_formant_analyzer.analyze(data_window, i);
+            let z = filter.preprocess(res.poles);
+            let x = filter.update(z);
             let e = performance.now()
             
             test_case_state.results.push(res);
+            test_case_state.smooth_results.push(x);
             test_case_state.timing.push(e - s);
         });
+
+        // console.log(z);
+
+        // gotta measure measurement covariance...
+        // let measurement_means = [0, 0, 0];
+        // let measurement_counts = [0, 0, 0];
+        // test_case_state.results.forEach(result => {
+        //     result.poles.slice(0, 3).forEach((pole, i) => {
+        //         measurement_means[i] += pole.frequency;
+        //         measurement_counts[i] += 1;
+        //     });
+        // });
+
+        // measurement_means = [
+        //     measurement_means[0] / measurement_counts[0],
+        //     measurement_means[1] / measurement_counts[1],
+        //     measurement_means[2] / measurement_counts[2]
+        // ];
+
+        // let measurement_stdev = [0, 0, 0];
+        // test_case_state.results.forEach(result => {
+        //     result.poles.slice(0, 3).forEach((pole, i) => {
+        //         console.log(pole.frequency - measurement_means[i])
+        //         measurement_stdev[i] += Math.pow(pole.frequency - measurement_means[i], 2);
+        //     });
+        // });
+
+        // measurement_stdev = [
+        //     Math.sqrt(measurement_stdev[0] / measurement_counts[0]),
+        //     Math.sqrt(measurement_stdev[1] / measurement_counts[1]),
+        //     Math.sqrt(measurement_stdev[2] / measurement_counts[2])
+        // ];
+
+        console.log(test_case_state.results)
+        console.log(test_case_state.smooth_results)
 
         test_case_state.initialized = true;
     };
@@ -112,6 +147,24 @@
 
         });
 
+
+        ctx.fillStyle = "green";
+        ctx.strokeStyle = "green";
+        [0, 1, 2].forEach(f_index => {
+            ctx.beginPath()
+
+            test_case_state.smooth_results.forEach((result, i) => {
+                let f = result._data[f_index];
+                let y = ctx.canvas.height - ind2x(f, nyquist_limit, ctx.canvas.height);
+                let x = ind2x(i - o, test_case_state.formants.length, ctx.canvas.width);
+                if (i == 0) { ctx.moveTo(x, y); }
+                else { ctx.lineTo(x, y); }
+                ctx.fillRect(x - 2, y - 2, 4, 4);
+            });
+
+            ctx.stroke();
+        })
+
         
 
         ctx.fillStyle = "black";
@@ -130,8 +183,6 @@
 
             ctx.stroke();
         })
-
-
         
     }
 
