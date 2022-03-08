@@ -92,7 +92,7 @@ const setup_dynamic_mode = (application_state : ApplicationState) => {
 
 		let formant_analyzer = new FormantAnalyzer({
 			model_order: settings.lpc_model_order,
-			window_length_ms: settings.sample_window_length_ms,
+			window_length_s: settings.sample_window_length_ms,
 			sample_rate_hz: settings.sample_rate_hz,
 			frequency_bins: settings.frequency_bins,
 		});

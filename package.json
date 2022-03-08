@@ -1,8 +1,16 @@
 {
   "name": "fairly-fast-formants",
-  "description": "A library for formant extraction from audio.",
+  "description": "A set of fast primitives for entirely client-side formant detection.",
   "version": "0.1.0",
-  "main": "index.html",
+  "main": "dist/formants.umd.js",
+  "module": "dist/formants.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/formants.es.js",
+      "require": "./dist/formants.umd.js"
+    }
+  },
+  "files": ["dist"],
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.37",
     "svelte-canvas": "^0.7.1",
@@ -16,16 +24,9 @@
     "dev": "vite --config vite.site.config.js",
     "build-lib": "vite build --config vite.build.config.js",
     "build-site": "vite build --config vite.site.config.js",
-    "build-wasm": "wasm-pack build ./formants-wasm --target web",
+    "build-wasm": "wasm-pack build ./formants-wasm --target web; node ./scripts/post-compile.js",
+    "build-wasm-post": "node ./scripts/post-compile.js",
     "clean-wasm": "rm -rf ./formants-wasm/pkg",
-    "clean-js": "rm -rf dist"
-  },
-  "peerDependencies": {
-    "mathjs": "^10.1.1"
-  },
-  "peerDependenciesMeta": {
-    "mathjs": {
-      "optional": true
-    }
+    "clean-lib": "rm -rf dist"
   }
 }
