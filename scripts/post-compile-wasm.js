@@ -22,5 +22,3 @@ replacement_targets.forEach(replacement => {
 });
 
 fs.writeFileSync(TARGET_FILE, js_src);
-
-

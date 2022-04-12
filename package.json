@@ -10,9 +10,12 @@
       "require": "./dist/formants.umd.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.37",
+    "node-fetch": "^3.2.3",
     "svelte-canvas": "^0.7.1",
     "svelte-preprocess": "^4.10.3",
     "svelte-routing": "^1.6.0",
@@ -22,10 +25,9 @@
   },
   "scripts": {
     "dev": "vite --config vite.site.config.js",
-    "build-lib": "vite build --config vite.build.config.js",
     "build-site": "vite build --config vite.site.config.js",
-    "build-wasm": "wasm-pack build ./formants-wasm --target web; node ./scripts/post-compile.js",
-    "build-wasm-post": "node ./scripts/post-compile.js",
+    "build-lib": "vite build --config vite.build.config.js; node ./scripts/post-compile-lib-to-tests.js",
+    "build-wasm": "wasm-pack build ./formants-wasm --target web; node ./scripts/post-compile-wasm.js",
     "clean-wasm": "rm -rf ./formants-wasm/pkg",
     "clean-lib": "rm -rf dist"
   }
