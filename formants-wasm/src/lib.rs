@@ -32,35 +32,38 @@ macro_rules! log {
 
 #[wasm_bindgen]
 pub struct BlockData {
-    block_size : usize,
-    model_order : usize,
-    frequency_bins: usize,
-    sample_rate: u32,
-    solved: bool,
+    // All numbers bytes
+    block_size : usize, // 4 - 8 
+    model_order : usize, // 4 - 8 
+    frequency_bins: usize, // 4 - 8 
+    sample_rate: u32, // 4 
+    solved: bool,  // 1
   
-    signal : Vec<f32>,
+    signal : Vec<f32>, // 4 * 245 
    
-    correlation : Vec<f32>,
-    input : Vec<f32>,
-    target : Vec<f32>,
+    correlation : Vec<f32>, // 4 * 10 
+    input : Vec<f32>, // 4 * 10 
+    target : Vec<f32>, // 4 * 10 
 
-    toeplitz_indices : Vec<usize>,
-    toeplitz : Vec<f32>,
-    coefficients : Vec<f32>,
+    toeplitz_indices : Vec<usize>, // 4 - 8 * 10 * 10 
+    toeplitz : Vec<f32>, // 4 * 10 * 10 
+    coefficients : Vec<f32>, // 4 * (10 + 1)
 
-    filter_inputs : Vec<Complex<f32>>,
-    filter_frequencies : Vec<f32>,
-    filter_outputs : Vec<Complex<f32>>,
-    filter_magnitude : Vec<f32>,
+    filter_inputs : Vec<Complex<f32>>, // 2 * 4 * 512
+    filter_frequencies : Vec<f32>, // 4 * 512
+    filter_outputs : Vec<Complex<f32>>, // 2 * 4 * 512
+    filter_magnitude : Vec<f32>, // 4 * 512
 
-    formant_indices : Vec<u32>,
-    formant_count : u32,
+    formant_indices : Vec<u32>, // 4 * 10
+    formant_count : u32, // 4 
 
-    pole_real_values : Vec<f32>,
-    pole_imag_values : Vec<f32>,
-    pole_frequencies : Vec<f32>,
-    pole_bandwidths : Vec<f32>,
-    pole_count : u32,
+    pole_real_values : Vec<f32>, // 4 * 10
+    pole_imag_values : Vec<f32>, // 4 * 10
+    pole_frequencies : Vec<f32>, // 4 * 10
+    pole_bandwidths : Vec<f32>, // 4 * 10
+    pole_count : u32, // 4
+
+    // Final Footprint: 14,493 bytes ~14.15kb
 }
 
 #[wasm_bindgen]
@@ -216,7 +219,7 @@ pub fn run_lpc(block : &mut BlockData) -> bool {
 
     let succeeded = solve_coefficients(block);
 
-    // only continue if the data is real.
+    // only continue if matrix could be inverted.
     if succeeded {
         block.solved = succeeded;
         evaluate_envelope(block);

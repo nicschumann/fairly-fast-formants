@@ -1,7 +1,6 @@
 use crate::BlockData;
 
 pub fn autocorrelate(block: &mut BlockData) {
-
     let n = block.block_size;
     let p = block.model_order + 1;
 
