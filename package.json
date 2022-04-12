@@ -1,6 +1,7 @@
 {
   "name": "fairly-fast-formants",
   "description": "A set of fast primitives for entirely client-side formant detection.",
+  "license": "MIT",
   "version": "0.1.0",
   "main": "dist/formants.umd.js",
   "module": "dist/formants.es.js",
@@ -13,6 +14,9 @@
   "files": [
     "dist"
   ],
+  "peerDependencies": {
+    "mathjs": "^10.4.3"
+  },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.37",
     "node-fetch": "^3.2.3",
